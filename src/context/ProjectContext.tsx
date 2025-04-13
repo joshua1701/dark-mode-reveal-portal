@@ -1,107 +1,20 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
+import { Project, ProjectStatus } from '@/types/project';
+import { ProjectContextType } from './ProjectContextType';
+import { mockProjects } from '@/data/mockProjects';
+import { 
+  generateProjectId, 
+  generateMagicKey, 
+  getProjectById, 
+  getProjectByIdAndKey as getProjectByIdAndKeyUtil,
+  updateProjectStatus as updateProjectStatusUtil,
+  updateProjectRating as updateProjectRatingUtil
+} from '@/utils/projectUtils';
 
-export type ProjectStatus = 'pending' | 'approved' | 'rejected';
-
-export type Project = {
-  id: string;
-  name: string;
-  status: ProjectStatus;
-  createdAt: string;
-  customerEmail: string;
-  previewUrl: string;
-  fileData?: {
-    fileName: string;
-    fileType: string;
-    fileUrl: string;
-    watermarkedUrl?: string;
-  };
-  expiresAt: string | null;
-  hasPassword: boolean;
-  password?: string;
-  magicKey: string;
-  comments?: string;
-  customerRating?: 1 | 2 | 3 | 4 | 5;
-  progress?: number; // Progress value between 0-100
-};
-
-type ProjectContextType = {
-  projects: Project[];
-  loading: boolean;
-  error: string | null;
-  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey'>) => void;
-  getProject: (id: string) => Project | undefined;
-  getProjectByIdAndKey: (id: string, key: string) => Project | undefined;
-  updateProjectStatus: (id: string, status: ProjectStatus, comments?: string) => void;
-  updateProjectRating: (id: string, rating: 1 | 2 | 3 | 4 | 5) => void;
-};
-
+// Create the context with undefined as initial value
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
-
-// Mock projects
-const mockProjects: Project[] = [
-  {
-    id: 'proj-001',
-    name: 'Acme Corporation Website',
-    status: 'pending',
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    customerEmail: 'contact@acme.com',
-    previewUrl: 'https://example.com/acme-preview',
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    hasPassword: false,
-    magicKey: 'secret-key-001',
-    progress: 70
-  },
-  {
-    id: 'proj-002',
-    name: 'Global Tech Redesign',
-    status: 'approved',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    customerEmail: 'manager@globaltech.com',
-    previewUrl: 'https://example.com/globaltech-preview',
-    expiresAt: null,
-    hasPassword: true,
-    password: '1234',
-    magicKey: 'secret-key-002',
-    comments: 'Looks great! Approved for launch.',
-    customerRating: 5,
-    progress: 100
-  },
-  {
-    id: 'proj-003',
-    name: 'Sunshine Bakery E-commerce',
-    status: 'rejected',
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    customerEmail: 'owner@sunshinebakery.com',
-    previewUrl: 'https://example.com/sunshine-preview',
-    expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-    hasPassword: false,
-    magicKey: 'secret-key-003',
-    comments: 'We need to revise the color scheme. Too bright for our brand.',
-    customerRating: 2,
-    progress: 60
-  },
-  {
-    id: 'proj-004',
-    name: 'Cogswell Logo Design',
-    status: 'pending',
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    customerEmail: 'marketing@cogswell.com',
-    previewUrl: '',
-    fileData: {
-      fileName: 'cogswell-logo.png',
-      fileType: 'image/png',
-      fileUrl: '/lovable-uploads/c396cd61-c7de-47be-b58c-edff18e58dbf.png',
-      watermarkedUrl: '/lovable-uploads/c396cd61-c7de-47be-b58c-edff18e58dbf.png'
-    },
-    expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    hasPassword: true,
-    password: '5678',
-    magicKey: 'secret-key-004',
-    progress: 85
-  }
-];
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -137,8 +50,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey'>) => {
     // Generate a random ID and magicKey
-    const newId = `proj-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-    const magicKey = `key-${Math.random().toString(36).substring(2, 12)}`;
+    const newId = generateProjectId();
+    const magicKey = generateMagicKey();
     
     const newProject: Project = {
       ...projectData,
@@ -165,25 +78,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const getProject = (id: string) => {
-    return projects.find(project => project.id === id);
+    return getProjectById(projects, id);
   };
 
   const getProjectByIdAndKey = (id: string, key: string) => {
-    return projects.find(project => project.id === id && project.magicKey === key);
+    return getProjectByIdAndKeyUtil(projects, id, key);
   };
 
   const updateProjectStatus = (id: string, status: ProjectStatus, comments?: string) => {
-    const updatedProjects = projects.map(project => {
-      if (project.id === id) {
-        return { 
-          ...project, 
-          status, 
-          comments: comments || project.comments,
-          progress: status === 'approved' ? 100 : project.progress
-        };
-      }
-      return project;
-    });
+    const updatedProjects = updateProjectStatusUtil(projects, id, status, comments);
     
     setProjects(updatedProjects);
     localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
@@ -197,12 +100,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateProjectRating = (id: string, rating: 1 | 2 | 3 | 4 | 5) => {
-    const updatedProjects = projects.map(project => {
-      if (project.id === id) {
-        return { ...project, customerRating: rating };
-      }
-      return project;
-    });
+    const updatedProjects = updateProjectRatingUtil(projects, id, rating);
     
     setProjects(updatedProjects);
     localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
@@ -238,3 +136,6 @@ export const useProjects = () => {
   }
   return context;
 };
+
+// Re-export types for convenience
+export { type Project, type ProjectStatus } from '@/types/project';
