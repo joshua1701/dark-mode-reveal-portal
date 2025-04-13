@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProjects, Project, ProjectStatus } from '@/context/ProjectContext';
@@ -8,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Check, X, Copy, Smartphone, Laptop, Monitor, ZoomIn, ZoomOut, Link as LinkIcon } from 'lucide-react';
+import ProgressBar from '@/components/ProgressBar';
+import StarRating from '@/components/StarRating';
+import { Loader2, Check, X, Copy, Smartphone, Laptop, Monitor, ZoomIn, ZoomOut, Link as LinkIcon, Download, ThumbsUp } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 const PortalViewport: React.FC<{ 
@@ -40,8 +41,64 @@ const PortalViewport: React.FC<{
   );
 };
 
+const FilePreview: React.FC<{
+  fileData: Project['fileData'],
+  zoom: number,
+  onDownload: () => void
+}> = ({ fileData, zoom, onDownload }) => {
+  if (!fileData) return null;
+  
+  const isImage = fileData.fileType.startsWith('image/');
+  const isPdf = fileData.fileType === 'application/pdf';
+  
+  return (
+    <div className="relative h-full w-full flex flex-col items-center justify-center">
+      <div className="absolute top-4 right-4 z-10">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="bg-black/30 border-white/10 hover:bg-white/10"
+          onClick={onDownload}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Download
+        </Button>
+      </div>
+      
+      <div className="bg-black/30 p-1 rounded-lg flex items-center justify-center overflow-auto max-h-full max-w-full" style={{ transform: `scale(${zoom})` }}>
+        {isImage && (
+          <img 
+            src={fileData.watermarkedUrl || fileData.fileUrl} 
+            alt="Preview" 
+            className="max-w-full max-h-[calc(100vh-200px)] object-contain"
+          />
+        )}
+        {isPdf && (
+          <iframe
+            src={fileData.fileUrl}
+            className="w-[800px] h-[800px] border-0"
+            title="PDF Preview"
+          />
+        )}
+        {!isImage && !isPdf && (
+          <div className="p-8 text-center text-designer-text-secondary">
+            <p>Preview not available for this file type</p>
+            <Button 
+              className="mt-4"
+              onClick={onDownload}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download File
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Portal = () => {
-  const { getProjectByIdAndKey, updateProjectStatus } = useProjects();
+  const { getProjectByIdAndKey, updateProjectStatus, updateProjectRating } = useProjects();
   const { verifyMagicLink, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,6 +113,8 @@ const Portal = () => {
   const [isVerifying, setIsVerifying] = useState(true);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(5);
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -92,7 +151,6 @@ const Portal = () => {
       
       setProject(foundProject);
       
-      // Check if project needs password
       if (foundProject.hasPassword) {
         setIsPasswordModalOpen(true);
       } else {
@@ -133,11 +191,7 @@ const Portal = () => {
     if (status === 'rejected') {
       setIsRejectModalOpen(true);
     } else {
-      updateProjectStatus(project.id, status);
-      toast({
-        title: 'Project Approved',
-        description: 'Thank you for your approval!',
-      });
+      setShowRatingModal(true);
     }
   };
   
@@ -150,6 +204,35 @@ const Portal = () => {
       title: 'Project Rejected',
       description: 'Feedback has been submitted',
       variant: 'destructive',
+    });
+  };
+  
+  const handleRatingSubmit = () => {
+    if (!project) return;
+    
+    updateProjectRating(project.id, rating);
+    updateProjectStatus(project.id, 'approved');
+    setShowRatingModal(false);
+    
+    toast({
+      title: 'Project Approved',
+      description: 'Thank you for your approval!',
+    });
+  };
+  
+  const handleDownload = () => {
+    if (!project?.fileData) return;
+    
+    const link = document.createElement('a');
+    link.href = project.fileData.watermarkedUrl || project.fileData.fileUrl;
+    link.download = `CogswellShare_${project.fileData.fileName}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: 'Download started',
+      description: 'Your file is being downloaded',
     });
   };
   
@@ -186,7 +269,6 @@ const Portal = () => {
   
   return (
     <div className="flex flex-col h-screen bg-designer-background">
-      {/* Password Dialog */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
         <DialogContent className="bg-black/80 border-white/10 text-white sm:max-w-[425px]">
           <DialogHeader>
@@ -216,7 +298,6 @@ const Portal = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Rejection Modal */}
       <Dialog open={isRejectModalOpen} onOpenChange={setIsRejectModalOpen}>
         <DialogContent className="bg-black/80 border-white/10 text-white sm:max-w-[500px]">
           <DialogHeader>
@@ -248,11 +329,40 @@ const Portal = () => {
         </DialogContent>
       </Dialog>
       
+      <Dialog open={showRatingModal} onOpenChange={setShowRatingModal}>
+        <DialogContent className="bg-black/80 border-white/10 text-white sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Rate This Project</DialogTitle>
+            <DialogDescription className="text-designer-text-secondary">
+              How would you rate your satisfaction with this design?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-6">
+            <div className="flex justify-center">
+              <StarRating rating={rating} onChange={setRating} size="lg" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleRatingSubmit}
+              className="bg-designer-badge hover:bg-designer-hover text-black font-semibold"
+            >
+              <ThumbsUp className="mr-2 h-4 w-4" />
+              Submit & Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {isVerified && (
         <div className="flex flex-col md:flex-row h-full">
-          {/* Sidebar */}
           <div className="w-full md:w-[320px] bg-black/40 border-r border-white/10 p-6 flex flex-col">
             <div className="mb-6">
+              <img 
+                src="/lovable-uploads/c396cd61-c7de-47be-b58c-edff18e58dbf.png" 
+                alt="CogswellShare" 
+                className="h-10 mb-4"
+              />
               <h1 className="text-xl font-bold mb-2">{project.name}</h1>
               <Badge className={getStatusBadgeStyle(project.status)}>
                 {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
@@ -260,20 +370,26 @@ const Portal = () => {
             </div>
             
             <div className="mb-6">
-              <div className="text-sm text-designer-text-secondary mb-2">Preview URL:</div>
-              <div className="flex items-center bg-white/5 rounded-md px-3 py-2 border border-white/10">
-                <LinkIcon className="h-4 w-4 mr-2 text-designer-text-secondary" />
-                <div className="truncate text-sm flex-1">{project.previewUrl}</div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={handleCopyLink}
-                  className="ml-2 h-8 w-8 p-0"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
+              <ProgressBar value={project.progress || 70} />
             </div>
+            
+            {project.previewUrl && (
+              <div className="mb-6">
+                <div className="text-sm text-designer-text-secondary mb-2">Preview URL:</div>
+                <div className="flex items-center bg-white/5 rounded-md px-3 py-2 border border-white/10">
+                  <LinkIcon className="h-4 w-4 mr-2 text-designer-text-secondary" />
+                  <div className="truncate text-sm flex-1">{project.previewUrl}</div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={handleCopyLink}
+                    className="ml-2 h-8 w-8 p-0"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
             
             {project.status === 'pending' && (
               <div className="flex flex-col space-y-4 mt-auto">
@@ -296,14 +412,23 @@ const Portal = () => {
             )}
             
             {project.status === 'approved' && (
-              <div className="mt-auto p-4 bg-designer-badge/20 rounded-lg border border-designer-badge/30">
-                <p className="text-sm font-medium text-designer-badge flex items-center">
-                  <Check className="mr-2 h-5 w-5" />
-                  Project Approved
-                </p>
-                <p className="text-xs text-designer-text-secondary mt-1">
-                  You approved this project. Your designer has been notified.
-                </p>
+              <div className="mt-auto space-y-4">
+                {project.customerRating && (
+                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                    <p className="text-sm text-designer-text-secondary mb-2">Your Rating:</p>
+                    <StarRating rating={project.customerRating} readOnly />
+                  </div>
+                )}
+                
+                <div className="p-4 bg-designer-badge/20 rounded-lg border border-designer-badge/30">
+                  <p className="text-sm font-medium text-designer-badge flex items-center">
+                    <Check className="mr-2 h-5 w-5" />
+                    Project Approved
+                  </p>
+                  <p className="text-xs text-designer-text-secondary mt-1">
+                    You approved this project. Your designer has been notified.
+                  </p>
+                </div>
               </div>
             )}
             
@@ -325,39 +450,43 @@ const Portal = () => {
             )}
           </div>
           
-          {/* Main Content */}
           <div className="flex-1 flex flex-col">
-            {/* Toolbar */}
             <div className="bg-black/60 border-b border-white/10 p-3 flex items-center justify-between">
-              <div className="flex items-center space-x-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 ${viewport === 'mobile' ? 'bg-white/10' : ''}`}
-                  onClick={() => setViewport('mobile')}
-                  title="Mobile View"
-                >
-                  <Smartphone className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 ${viewport === 'tablet' ? 'bg-white/10' : ''}`}
-                  onClick={() => setViewport('tablet')}
-                  title="Tablet View"
-                >
-                  <Laptop className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`h-8 w-8 ${viewport === 'desktop' ? 'bg-white/10' : ''}`}
-                  onClick={() => setViewport('desktop')}
-                  title="Desktop View"
-                >
-                  <Monitor className="h-4 w-4" />
-                </Button>
-              </div>
+              {project.previewUrl ? (
+                <>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${viewport === 'mobile' ? 'bg-white/10' : ''}`}
+                      onClick={() => setViewport('mobile')}
+                      title="Mobile View"
+                    >
+                      <Smartphone className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${viewport === 'tablet' ? 'bg-white/10' : ''}`}
+                      onClick={() => setViewport('tablet')}
+                      title="Tablet View"
+                    >
+                      <Laptop className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${viewport === 'desktop' ? 'bg-white/10' : ''}`}
+                      onClick={() => setViewport('desktop')}
+                      title="Desktop View"
+                    >
+                      <Monitor className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div />
+              )}
               
               <div className="flex items-center space-x-1">
                 <Button
@@ -395,9 +524,20 @@ const Portal = () => {
               </div>
             </div>
             
-            {/* Preview Area */}
             <div className="flex-1 p-4 overflow-hidden">
-              <PortalViewport url={project.previewUrl} viewport={viewport} zoom={zoom} />
+              {project.previewUrl ? (
+                <PortalViewport url={project.previewUrl} viewport={viewport} zoom={zoom} />
+              ) : project.fileData ? (
+                <FilePreview 
+                  fileData={project.fileData} 
+                  zoom={zoom} 
+                  onDownload={handleDownload}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-designer-text-secondary">
+                  No preview available
+                </div>
+              )}
             </div>
           </div>
         </div>

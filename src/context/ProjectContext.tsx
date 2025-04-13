@@ -11,11 +11,19 @@ export type Project = {
   createdAt: string;
   customerEmail: string;
   previewUrl: string;
+  fileData?: {
+    fileName: string;
+    fileType: string;
+    fileUrl: string;
+    watermarkedUrl?: string;
+  };
   expiresAt: string | null;
   hasPassword: boolean;
   password?: string;
   magicKey: string;
   comments?: string;
+  customerRating?: 1 | 2 | 3 | 4 | 5;
+  progress?: number; // Progress value between 0-100
 };
 
 type ProjectContextType = {
@@ -26,6 +34,7 @@ type ProjectContextType = {
   getProject: (id: string) => Project | undefined;
   getProjectByIdAndKey: (id: string, key: string) => Project | undefined;
   updateProjectStatus: (id: string, status: ProjectStatus, comments?: string) => void;
+  updateProjectRating: (id: string, rating: 1 | 2 | 3 | 4 | 5) => void;
 };
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -41,7 +50,8 @@ const mockProjects: Project[] = [
     previewUrl: 'https://example.com/acme-preview',
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     hasPassword: false,
-    magicKey: 'secret-key-001'
+    magicKey: 'secret-key-001',
+    progress: 70
   },
   {
     id: 'proj-002',
@@ -54,7 +64,9 @@ const mockProjects: Project[] = [
     hasPassword: true,
     password: '1234',
     magicKey: 'secret-key-002',
-    comments: 'Looks great! Approved for launch.'
+    comments: 'Looks great! Approved for launch.',
+    customerRating: 5,
+    progress: 100
   },
   {
     id: 'proj-003',
@@ -66,7 +78,28 @@ const mockProjects: Project[] = [
     expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
     hasPassword: false,
     magicKey: 'secret-key-003',
-    comments: 'We need to revise the color scheme. Too bright for our brand.'
+    comments: 'We need to revise the color scheme. Too bright for our brand.',
+    customerRating: 2,
+    progress: 60
+  },
+  {
+    id: 'proj-004',
+    name: 'Cogswell Logo Design',
+    status: 'pending',
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    customerEmail: 'marketing@cogswell.com',
+    previewUrl: '',
+    fileData: {
+      fileName: 'cogswell-logo.png',
+      fileType: 'image/png',
+      fileUrl: '/lovable-uploads/c396cd61-c7de-47be-b58c-edff18e58dbf.png',
+      watermarkedUrl: '/lovable-uploads/c396cd61-c7de-47be-b58c-edff18e58dbf.png'
+    },
+    expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    hasPassword: true,
+    password: '5678',
+    magicKey: 'secret-key-004',
+    progress: 85
   }
 ];
 
@@ -112,7 +145,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: newId,
       status: 'pending',
       createdAt: new Date().toISOString(),
-      magicKey
+      magicKey,
+      progress: projectData.progress || 70 // Default to 70% if not provided
     };
     
     const updatedProjects = [...projects, newProject];
@@ -141,7 +175,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateProjectStatus = (id: string, status: ProjectStatus, comments?: string) => {
     const updatedProjects = projects.map(project => {
       if (project.id === id) {
-        return { ...project, status, comments: comments || project.comments };
+        return { 
+          ...project, 
+          status, 
+          comments: comments || project.comments,
+          progress: status === 'approved' ? 100 : project.progress
+        };
       }
       return project;
     });
@@ -157,6 +196,23 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
+  const updateProjectRating = (id: string, rating: 1 | 2 | 3 | 4 | 5) => {
+    const updatedProjects = projects.map(project => {
+      if (project.id === id) {
+        return { ...project, customerRating: rating };
+      }
+      return project;
+    });
+    
+    setProjects(updatedProjects);
+    localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
+    
+    toast({
+      title: 'Rating submitted',
+      description: 'Thank you for your feedback!',
+    });
+  };
+
   return (
     <ProjectContext.Provider 
       value={{ 
@@ -166,7 +222,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addProject, 
         getProject, 
         getProjectByIdAndKey,
-        updateProjectStatus 
+        updateProjectStatus,
+        updateProjectRating
       }}
     >
       {children}

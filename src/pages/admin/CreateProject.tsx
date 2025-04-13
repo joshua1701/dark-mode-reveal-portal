@@ -3,13 +3,17 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '@/context/ProjectContext';
 import Layout from '@/components/Layout';
+import FileUpload from '@/components/FileUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Mail, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Loader2, Mail, Link as LinkIcon, Percent } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { applyWatermark } from '@/utils/fileService';
 
 const CreateProject = () => {
   const [name, setName] = useState('');
@@ -20,14 +24,21 @@ const CreateProject = () => {
   const [hasPassword, setHasPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [projectType, setProjectType] = useState<'url' | 'file'>('url');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<number>(70);
 
   const { addProject } = useProjects();
   const navigate = useNavigate();
 
+  const handleFileSelected = (file: File) => {
+    setSelectedFile(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!previewUrl.startsWith('http')) {
+    if (projectType === 'url' && !previewUrl.startsWith('http')) {
       toast({
         title: 'Invalid URL',
         description: 'Preview URL must start with http:// or https://',
@@ -36,16 +47,41 @@ const CreateProject = () => {
       return;
     }
     
+    if (projectType === 'file' && !selectedFile) {
+      toast({
+        title: 'No file selected',
+        description: 'Please select a file to upload',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
+      let fileData;
+      
+      if (projectType === 'file' && selectedFile) {
+        // Apply watermark to image files
+        const watermarkedUrl = await applyWatermark(selectedFile);
+        
+        fileData = {
+          fileName: selectedFile.name,
+          fileType: selectedFile.type,
+          fileUrl: URL.createObjectURL(selectedFile),
+          watermarkedUrl
+        };
+      }
+      
       addProject({
         name,
-        previewUrl,
+        previewUrl: projectType === 'url' ? previewUrl : '',
+        fileData,
         customerEmail,
         expiresAt: hasExpiry ? new Date(expiryDate).toISOString() : null,
         hasPassword,
-        password: hasPassword ? password : undefined
+        password: hasPassword ? password : undefined,
+        progress
       });
       
       // Simulate email sending
@@ -85,7 +121,7 @@ const CreateProject = () => {
             <CardHeader>
               <CardTitle className="text-2xl">Create New Project</CardTitle>
               <CardDescription className="text-designer-text-secondary">
-                Set up a new project for client approval
+                Set up a new CogswellShare project for client approval
               </CardDescription>
             </CardHeader>
             
@@ -103,23 +139,45 @@ const CreateProject = () => {
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="preview-url" className="text-designer-text-primary">Preview URL</Label>
-                  <div className="relative">
-                    <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-designer-text-secondary" />
-                    <Input
-                      id="preview-url"
-                      placeholder="https://preview.example.com"
-                      value={previewUrl}
-                      onChange={(e) => setPreviewUrl(e.target.value)}
-                      className="pl-10 bg-white/5 border-white/10 text-white"
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-designer-text-secondary">
-                    Enter the full URL where your client can preview the project
-                  </p>
-                </div>
+                <Tabs defaultValue="url" onValueChange={(value) => setProjectType(value as 'url' | 'file')}>
+                  <TabsList className="bg-white/5 border-white/10">
+                    <TabsTrigger value="url">Website URL</TabsTrigger>
+                    <TabsTrigger value="file">Upload Design</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="url" className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="preview-url" className="text-designer-text-primary">Preview URL</Label>
+                      <div className="relative">
+                        <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-designer-text-secondary" />
+                        <Input
+                          id="preview-url"
+                          placeholder="https://preview.example.com"
+                          value={previewUrl}
+                          onChange={(e) => setPreviewUrl(e.target.value)}
+                          className="pl-10 bg-white/5 border-white/10 text-white"
+                          required={projectType === 'url'}
+                        />
+                      </div>
+                      <p className="text-xs text-designer-text-secondary">
+                        Enter the full URL where your client can preview the project
+                      </p>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="file" className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label className="text-designer-text-primary">Upload Design File</Label>
+                      <FileUpload 
+                        onFileSelected={handleFileSelected}
+                        acceptedFileTypes="image/png,image/jpeg,image/svg+xml,application/pdf"
+                      />
+                      <p className="text-xs text-designer-text-secondary">
+                        Supported formats: PNG, JPG, SVG, PDF (max 10MB)
+                      </p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
                 
                 <div className="space-y-2">
                   <Label htmlFor="customer-email" className="text-designer-text-primary">Customer Email</Label>
@@ -135,6 +193,30 @@ const CreateProject = () => {
                       required
                     />
                   </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="progress" className="text-designer-text-primary flex items-center">
+                      <Percent className="h-4 w-4 mr-1" />
+                      Project Progress
+                    </Label>
+                    <span className="text-sm font-medium text-designer-text-primary">
+                      {progress}%
+                    </span>
+                  </div>
+                  <Slider
+                    id="progress"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={[progress]}
+                    onValueChange={(value) => setProgress(value[0])}
+                    className="py-2"
+                  />
+                  <p className="text-xs text-designer-text-secondary">
+                    Indicate how complete the project is for the client's reference
+                  </p>
                 </div>
                 
                 <div className="space-y-4 pt-4 border-t border-white/10">
