@@ -6,24 +6,57 @@ import { Button } from '@/components/ui/button';
 import { Copy, Check, X } from 'lucide-react';
 import ProgressBar from '@/components/ProgressBar';
 import StarRating from '@/components/StarRating';
-import { toast } from '@/components/ui/use-toast';
 import { LinkIcon } from 'lucide-react';
+
+// Translation content
+const translations = {
+  en: {
+    previewUrl: 'Preview URL:',
+    projectApproved: 'Project Approved',
+    approvedNotification: 'You approved this project. Your designer has been notified.',
+    changesRequested: 'Changes Requested',
+    feedbackSubmitted: 'Your feedback has been submitted to the designer.',
+    approveProject: 'Approve Project',
+    requestChanges: 'Request Changes',
+    expired: 'Expired'
+  },
+  de: {
+    previewUrl: 'Vorschau-URL:',
+    projectApproved: 'Projekt genehmigt',
+    approvedNotification: 'Sie haben dieses Projekt genehmigt. Ihr Designer wurde benachrichtigt.',
+    changesRequested: 'Änderungen angefordert',
+    feedbackSubmitted: 'Ihr Feedback wurde an den Designer übermittelt.',
+    approveProject: 'Projekt genehmigen',
+    requestChanges: 'Änderungen anfordern',
+    expired: 'Abgelaufen'
+  }
+};
 
 type ProjectSidebarProps = {
   project: Project;
   onStatusChange: (status: ProjectStatus) => void;
   handleCopyLink: () => void;
+  language?: 'en' | 'de';
+  isExpired?: boolean;
 };
 
 const ProjectSidebar: React.FC<ProjectSidebarProps> = ({ 
   project, 
   onStatusChange,
-  handleCopyLink 
+  handleCopyLink,
+  language = 'en',
+  isExpired = false
 }) => {
+  const t = translations[language];
+
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
       case 'pending':
         return 'bg-blue-500';
+      case 'in-review':
+        return 'bg-purple-500';
+      case 'final':
+        return 'bg-orange-500';
       case 'approved':
         return 'bg-designer-badge';
       case 'rejected':
@@ -41,10 +74,22 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           alt="CogswellShare" 
           className="h-10 mb-4"
         />
-        <h1 className="text-xl font-bold mb-2">{project.name}</h1>
-        <Badge className={getStatusBadgeStyle(project.status)}>
-          {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
-        </Badge>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold mb-2">{project.name}</h1>
+          {project.version && project.version > 1 && (
+            <Badge className="bg-white/10 text-xs">v{project.version}</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge className={getStatusBadgeStyle(project.status)}>
+            {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+          </Badge>
+          {isExpired && (
+            <Badge variant="outline" className="border-red-500 text-red-500">
+              {t.expired}
+            </Badge>
+          )}
+        </div>
       </div>
       
       <div className="mb-6">
@@ -53,7 +98,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       
       {project.previewUrl && (
         <div className="mb-6">
-          <div className="text-sm text-designer-text-secondary mb-2">Preview URL:</div>
+          <div className="text-sm text-designer-text-secondary mb-2">{t.previewUrl}</div>
           <div className="flex items-center bg-white/5 rounded-md px-3 py-2 border border-white/10">
             <LinkIcon className="h-4 w-4 mr-2 text-designer-text-secondary" />
             <div className="truncate text-sm flex-1">{project.previewUrl}</div>
@@ -69,14 +114,14 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         </div>
       )}
       
-      {project.status === 'pending' && (
+      {!isExpired && project.status === 'pending' && (
         <div className="flex flex-col space-y-4 mt-auto">
           <Button 
             className="bg-designer-badge hover:bg-designer-hover text-black font-semibold"
             onClick={() => onStatusChange('approved')}
           >
             <Check className="mr-2 h-5 w-5" />
-            Approve Project
+            {t.approveProject}
           </Button>
           <Button
             variant="outline"
@@ -84,7 +129,7 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
             onClick={() => onStatusChange('rejected')}
           >
             <X className="mr-2 h-5 w-5" />
-            Request Changes
+            {t.requestChanges}
           </Button>
         </div>
       )}
@@ -101,10 +146,10 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           <div className="p-4 bg-designer-badge/20 rounded-lg border border-designer-badge/30">
             <p className="text-sm font-medium text-designer-badge flex items-center">
               <Check className="mr-2 h-5 w-5" />
-              Project Approved
+              {t.projectApproved}
             </p>
             <p className="text-xs text-designer-text-secondary mt-1">
-              You approved this project. Your designer has been notified.
+              {t.approvedNotification}
             </p>
           </div>
         </div>
@@ -114,10 +159,10 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         <div className="mt-auto p-4 bg-red-500/20 rounded-lg border border-red-500/30">
           <p className="text-sm font-medium text-red-400 flex items-center">
             <X className="mr-2 h-5 w-5" />
-            Changes Requested
+            {t.changesRequested}
           </p>
           <p className="text-xs text-designer-text-secondary mt-1">
-            Your feedback has been submitted to the designer.
+            {t.feedbackSubmitted}
           </p>
           {project.comments && (
             <div className="mt-2 p-2 bg-black/30 rounded border border-white/10 text-xs">

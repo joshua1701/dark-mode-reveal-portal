@@ -1,5 +1,5 @@
 
-import { Project, ProjectStatus } from '../types/project';
+import { Project, ProjectStatus, AuditLogEvent } from '../types/project';
 
 // Generate a new project ID
 export const generateProjectId = (): string => {
@@ -34,11 +34,29 @@ export const updateProjectStatus = (
         ...project, 
         status, 
         comments: comments || project.comments,
-        progress: status === 'approved' ? 100 : project.progress
+        progress: calculateProgressByStatus(status, project.progress)
       };
     }
     return project;
   });
+};
+
+// Calculate progress based on status
+export const calculateProgressByStatus = (status: ProjectStatus, currentProgress?: number): number => {
+  switch (status) {
+    case 'pending':
+      return 20;
+    case 'in-review':
+      return 40;
+    case 'final':
+      return 80;
+    case 'approved':
+      return 100;
+    case 'rejected':
+      return currentProgress || 50;
+    default:
+      return currentProgress || 20;
+  }
 };
 
 // Update a project's rating
@@ -53,4 +71,89 @@ export const updateProjectRating = (
     }
     return project;
   });
+};
+
+// Add audit log entry
+export const addAuditLogEntry = (
+  projects: Project[],
+  id: string,
+  event: Omit<AuditLogEvent, 'timestamp'>
+): Project[] => {
+  return projects.map(project => {
+    if (project.id === id) {
+      const timestamp = new Date().toISOString();
+      const auditLog = project.auditLog || [];
+      
+      return {
+        ...project,
+        auditLog: [...auditLog, { ...event, timestamp }],
+        lastViewed: event.action === 'viewed' ? timestamp : project.lastViewed
+      };
+    }
+    return project;
+  });
+};
+
+// Set project archived status
+export const setProjectArchived = (
+  projects: Project[],
+  id: string,
+  archived: boolean
+): Project[] => {
+  return projects.map(project => {
+    if (project.id === id) {
+      return { ...project, archived };
+    }
+    return project;
+  });
+};
+
+// Update internal notes
+export const updateInternalNotes = (
+  projects: Project[],
+  id: string,
+  notes: string
+): Project[] => {
+  return projects.map(project => {
+    if (project.id === id) {
+      return { ...project, internalNotes: notes };
+    }
+    return project;
+  });
+};
+
+// Update project version
+export const updateProjectVersion = (
+  projects: Project[],
+  id: string,
+  version: number
+): Project[] => {
+  return projects.map(project => {
+    if (project.id === id) {
+      return { ...project, version };
+    }
+    return project;
+  });
+};
+
+// Update project language
+export const updateProjectLanguage = (
+  projects: Project[],
+  id: string,
+  language: 'en' | 'de'
+): Project[] => {
+  return projects.map(project => {
+    if (project.id === id) {
+      return { ...project, language };
+    }
+    return project;
+  });
+};
+
+// Delete a project
+export const deleteProject = (
+  projects: Project[],
+  id: string
+): Project[] => {
+  return projects.filter(project => project.id !== id);
 };

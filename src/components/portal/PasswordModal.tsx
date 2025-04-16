@@ -1,16 +1,34 @@
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Lock } from 'lucide-react';
+
+// Translation content
+const translations = {
+  en: {
+    passwordProtected: 'Password Protected',
+    passwordRequired: 'This project requires a password to view',
+    enterPassword: 'Enter password',
+    submit: 'Submit'
+  },
+  de: {
+    passwordProtected: 'Passwortgeschützt',
+    passwordRequired: 'Dieses Projekt erfordert ein Passwort zum Anzeigen',
+    enterPassword: 'Passwort eingeben',
+    submit: 'Absenden'
+  }
+};
 
 type PasswordModalProps = {
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (isOpen: boolean) => void;
   password: string;
   setPassword: (password: string) => void;
   passwordError: string;
   onSubmit: () => void;
+  language?: 'en' | 'de';
 };
 
 const PasswordModal: React.FC<PasswordModalProps> = ({
@@ -19,35 +37,46 @@ const PasswordModal: React.FC<PasswordModalProps> = ({
   password,
   setPassword,
   passwordError,
-  onSubmit
+  onSubmit,
+  language = 'en'
 }) => {
+  const t = translations[language];
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-black/80 border-white/10 text-white sm:max-w-[425px]">
+      <DialogContent className="bg-black/80 border-white/10 text-white">
         <DialogHeader>
-          <DialogTitle>Password Required</DialogTitle>
-          <DialogDescription className="text-designer-text-secondary">
-            Enter the password provided by your designer to view this project.
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-designer-badge/10 mb-2">
+            <Lock className="h-6 w-6 text-designer-badge" />
+          </div>
+          <DialogTitle className="text-center">{t.passwordProtected}</DialogTitle>
+          <DialogDescription className="text-center text-designer-text-secondary">
+            {t.passwordRequired}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            placeholder="Enter password"
             type="password"
+            placeholder={t.enterPassword}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="bg-white/5 border-white/10 text-white"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                onSubmit();
-              }
-            }}
           />
-          {passwordError && <p className="text-red-400 text-sm">{passwordError}</p>}
-        </div>
-        <DialogFooter>
-          <Button onClick={onSubmit}>Submit</Button>
-        </DialogFooter>
+          
+          {passwordError && (
+            <p className="text-red-500 text-sm">{passwordError}</p>
+          )}
+          
+          <Button type="submit" className="w-full">
+            {t.submit}
+          </Button>
+        </form>
       </DialogContent>
     </Dialog>
   );

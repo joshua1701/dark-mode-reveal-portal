@@ -14,9 +14,41 @@ import ViewportToolbar from '@/components/portal/ViewportToolbar';
 import PasswordModal from '@/components/portal/PasswordModal';
 import RejectionModal from '@/components/portal/RejectionModal';
 import RatingModal from '@/components/portal/RatingModal';
+import LanguageSwitcher from '@/components/portal/LanguageSwitcher';
+import ExpiryNotice from '@/components/portal/ExpiryNotice';
+
+// Translation content
+const translations = {
+  en: {
+    projectNotFound: 'Project Not Found',
+    invalidLink: 'This project link is invalid or expired',
+    returnHome: 'Return Home',
+    noPreview: 'No preview available'
+  },
+  de: {
+    projectNotFound: 'Projekt nicht gefunden',
+    invalidLink: 'Dieser Projektlink ist ungültig oder abgelaufen',
+    returnHome: 'Zur Startseite',
+    noPreview: 'Keine Vorschau verfügbar'
+  }
+};
+
+// Get user's IP address (in a real app, this would be handled server-side)
+const getUserIP = async (): Promise<string> => {
+  try {
+    // In a production environment, you would use your own backend endpoint
+    // This is just for demonstration purposes
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip;
+  } catch (error) {
+    console.error('Failed to get IP address:', error);
+    return 'unknown';
+  }
+};
 
 const Portal = () => {
-  const { getProjectByIdAndKey, updateProjectStatus, updateProjectRating } = useProjects();
+  const { getProjectByIdAndKey, updateProjectStatus, updateProjectRating, addAuditLog } = useProjects();
   const { verifyMagicLink, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,6 +65,8 @@ const Portal = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(5);
+  const [language, setLanguage] = useState<'en' | 'de'>('en');
+  const [isExpired, setIsExpired] = useState(false);
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -67,7 +101,30 @@ const Portal = () => {
         return;
       }
       
+      // Check if project is expired
+      if (foundProject.expiresAt) {
+        const expiryDate = new Date(foundProject.expiresAt);
+        if (expiryDate < new Date()) {
+          setIsExpired(true);
+        }
+      }
+
       setProject(foundProject);
+      setLanguage(foundProject.language || 'en');
+      
+      // Log view in audit log
+      try {
+        const ipAddress = await getUserIP();
+        const userAgent = navigator.userAgent;
+        
+        addAuditLog(foundProject.id, {
+          action: 'viewed',
+          ipAddress,
+          userAgent
+        });
+      } catch (error) {
+        console.error('Failed to log view:', error);
+      }
       
       if (foundProject.hasPassword) {
         setIsPasswordModalOpen(true);
@@ -79,7 +136,7 @@ const Portal = () => {
     };
     
     loadProject();
-  }, [location.search, getProjectByIdAndKey, verifyMagicLink, navigate]);
+  }, [location.search, getProjectByIdAndKey, verifyMagicLink, navigate, addAuditLog]);
   
   const handlePasswordSubmit = () => {
     if (!project) return;
@@ -89,7 +146,9 @@ const Portal = () => {
       setIsVerified(true);
       setPasswordError('');
     } else {
-      setPasswordError('Incorrect password. Please try again.');
+      setPasswordError(language === 'en' ? 
+        'Incorrect password. Please try again.' : 
+        'Falsches Passwort. Bitte versuchen Sie es erneut.');
     }
   };
   
@@ -98,8 +157,10 @@ const Portal = () => {
     
     navigator.clipboard.writeText(project.previewUrl);
     toast({
-      title: 'Link copied',
-      description: 'Preview URL has been copied to clipboard',
+      title: language === 'en' ? 'Link copied' : 'Link kopiert',
+      description: language === 'en' ? 
+        'Preview URL has been copied to clipboard' : 
+        'Vorschau-URL wurde in die Zwischenablage kopiert',
     });
   };
   
@@ -119,8 +180,10 @@ const Portal = () => {
     updateProjectStatus(project.id, 'rejected', rejectionReason);
     setIsRejectModalOpen(false);
     toast({
-      title: 'Project Rejected',
-      description: 'Feedback has been submitted',
+      title: language === 'en' ? 'Project Rejected' : 'Projekt abgelehnt',
+      description: language === 'en' ? 
+        'Feedback has been submitted' : 
+        'Feedback wurde übermittelt',
       variant: 'destructive',
     });
   };
@@ -133,8 +196,10 @@ const Portal = () => {
     setShowRatingModal(false);
     
     toast({
-      title: 'Project Approved',
-      description: 'Thank you for your approval!',
+      title: language === 'en' ? 'Project Approved' : 'Projekt genehmigt',
+      description: language === 'en' ? 
+        'Thank you for your approval!' : 
+        'Vielen Dank für Ihre Genehmigung!',
     });
   };
   
@@ -149,10 +214,21 @@ const Portal = () => {
     document.body.removeChild(link);
     
     toast({
-      title: 'Download started',
-      description: 'Your file is being downloaded',
+      title: language === 'en' ? 'Download started' : 'Download gestartet',
+      description: language === 'en' ? 
+        'Your file is being downloaded' : 
+        'Ihre Datei wird heruntergeladen',
     });
+
+    // Log download in audit log
+    addAuditLog(project.id, { action: 'viewed' });
   };
+  
+  const handleLanguageChange = (newLanguage: 'en' | 'de') => {
+    setLanguage(newLanguage);
+  };
+  
+  const t = translations[language];
   
   if (isLoading || isVerifying) {
     return (
@@ -165,15 +241,22 @@ const Portal = () => {
   if (!project) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-designer-background text-white">
-        <h1 className="text-2xl font-bold mb-4">Project Not Found</h1>
-        <p className="text-designer-text-secondary mb-6">This project link is invalid or expired</p>
-        <button onClick={() => navigate('/')}>Return Home</button>
+        <h1 className="text-2xl font-bold mb-4">{t.projectNotFound}</h1>
+        <p className="text-designer-text-secondary mb-6">{t.invalidLink}</p>
+        <button onClick={() => navigate('/')}>{t.returnHome}</button>
       </div>
     );
   }
   
   return (
     <div className="flex flex-col h-screen bg-designer-background">
+      <div className="absolute top-4 right-4 z-50">
+        <LanguageSwitcher 
+          currentLanguage={language} 
+          onLanguageChange={handleLanguageChange}
+        />
+      </div>
+      
       <PasswordModal
         isOpen={isPasswordModalOpen}
         onOpenChange={setIsPasswordModalOpen}
@@ -181,6 +264,7 @@ const Portal = () => {
         setPassword={setPassword}
         passwordError={passwordError}
         onSubmit={handlePasswordSubmit}
+        language={language}
       />
       
       <RejectionModal
@@ -189,6 +273,7 @@ const Portal = () => {
         rejectionReason={rejectionReason}
         setRejectionReason={setRejectionReason}
         onSubmit={handleReject}
+        language={language}
       />
       
       <RatingModal
@@ -197,14 +282,21 @@ const Portal = () => {
         rating={rating}
         setRating={setRating}
         onSubmit={handleRatingSubmit}
+        language={language}
       />
+      
+      {isExpired && (
+        <ExpiryNotice language={language} />
+      )}
       
       {isVerified && (
         <div className="flex flex-col md:flex-row h-full">
           <ProjectSidebar 
             project={project}
             onStatusChange={handleStatusChange}
-            handleCopyLink={handleCopyLink} 
+            handleCopyLink={handleCopyLink}
+            language={language}
+            isExpired={isExpired}
           />
           
           <div className="flex-1 flex flex-col">
@@ -214,6 +306,7 @@ const Portal = () => {
               zoom={zoom}
               setZoom={setZoom}
               hasPreviewUrl={!!project.previewUrl}
+              language={language}
             />
             
             <div className="flex-1 p-4 overflow-hidden">
@@ -224,10 +317,11 @@ const Portal = () => {
                   fileData={project.fileData} 
                   zoom={zoom} 
                   onDownload={handleDownload}
+                  language={language}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-designer-text-secondary">
-                  No preview available
+                  {t.noPreview}
                 </div>
               )}
             </div>

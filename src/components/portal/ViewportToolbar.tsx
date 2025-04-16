@@ -1,14 +1,35 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Smartphone, Laptop, Monitor, ZoomIn, ZoomOut } from 'lucide-react';
+import { Monitor, Smartphone, Tablet, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 type ViewportToolbarProps = {
   viewport: 'mobile' | 'tablet' | 'desktop';
   setViewport: (viewport: 'mobile' | 'tablet' | 'desktop') => void;
   zoom: number;
-  setZoom: (value: number | ((prev: number) => number)) => void;
+  setZoom: (zoom: number) => void;
   hasPreviewUrl: boolean;
+  language?: 'en' | 'de';
+};
+
+// Translation content
+const translations = {
+  en: {
+    zoomIn: 'Zoom In',
+    zoomOut: 'Zoom Out',
+    resetZoom: 'Reset Zoom',
+    mobileView: 'Mobile View',
+    tabletView: 'Tablet View',
+    desktopView: 'Desktop View'
+  },
+  de: {
+    zoomIn: 'Vergrößern',
+    zoomOut: 'Verkleinern',
+    resetZoom: 'Zoom zurücksetzen',
+    mobileView: 'Mobile Ansicht',
+    tabletView: 'Tablet Ansicht',
+    desktopView: 'Desktop Ansicht'
+  }
 };
 
 const ViewportToolbar: React.FC<ViewportToolbarProps> = ({
@@ -16,78 +37,89 @@ const ViewportToolbar: React.FC<ViewportToolbarProps> = ({
   setViewport,
   zoom,
   setZoom,
-  hasPreviewUrl
+  hasPreviewUrl,
+  language = 'en'
 }) => {
+  const t = translations[language];
+  
+  const handleZoomIn = () => {
+    setZoom(Math.min(zoom + 0.1, 2));
+  };
+  
+  const handleZoomOut = () => {
+    setZoom(Math.max(zoom - 0.1, 0.5));
+  };
+  
+  const handleResetZoom = () => {
+    setZoom(1);
+  };
+  
   return (
-    <div className="bg-black/60 border-b border-white/10 p-3 flex items-center justify-between">
-      {hasPreviewUrl ? (
-        <>
-          <div className="flex items-center space-x-1">
+    <div className="bg-black/50 border-b border-white/10 p-3 flex flex-wrap justify-between gap-2">
+      <div className="flex space-x-1">
+        {hasPreviewUrl && (
+          <>
             <Button
-              variant="ghost"
-              size="icon"
-              className={`h-8 w-8 ${viewport === 'mobile' ? 'bg-white/10' : ''}`}
+              variant="outline"
+              size="sm"
               onClick={() => setViewport('mobile')}
-              title="Mobile View"
+              className={`border-white/10 ${viewport === 'mobile' ? 'bg-white/10' : 'hover:bg-white/5'}`}
+              title={t.mobileView}
             >
               <Smartphone className="h-4 w-4" />
             </Button>
             <Button
-              variant="ghost"
-              size="icon"
-              className={`h-8 w-8 ${viewport === 'tablet' ? 'bg-white/10' : ''}`}
+              variant="outline"
+              size="sm"
               onClick={() => setViewport('tablet')}
-              title="Tablet View"
+              className={`border-white/10 ${viewport === 'tablet' ? 'bg-white/10' : 'hover:bg-white/5'}`}
+              title={t.tabletView}
             >
-              <Laptop className="h-4 w-4" />
+              <Tablet className="h-4 w-4" />
             </Button>
             <Button
-              variant="ghost"
-              size="icon"
-              className={`h-8 w-8 ${viewport === 'desktop' ? 'bg-white/10' : ''}`}
+              variant="outline"
+              size="sm"
               onClick={() => setViewport('desktop')}
-              title="Desktop View"
+              className={`border-white/10 ${viewport === 'desktop' ? 'bg-white/10' : 'hover:bg-white/5'}`}
+              title={t.desktopView}
             >
               <Monitor className="h-4 w-4" />
             </Button>
-          </div>
-        </>
-      ) : (
-        <div />
-      )}
+          </>
+        )}
+      </div>
       
-      <div className="flex items-center space-x-1">
+      <div className="flex space-x-1">
         <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
-          title="Zoom Out"
-          disabled={zoom <= 0.5}
+          variant="outline"
+          size="sm"
+          onClick={handleZoomOut}
+          className="border-white/10 hover:bg-white/5"
+          title={t.zoomOut}
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <span className="text-sm font-mono px-2">
+        <div className="bg-white/5 text-xs h-8 flex items-center px-2 rounded border border-white/10">
           {Math.round(zoom * 100)}%
-        </span>
+        </div>
         <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setZoom(prev => Math.min(2, prev + 0.1))}
-          title="Zoom In"
-          disabled={zoom >= 2}
+          variant="outline"
+          size="sm"
+          onClick={handleZoomIn}
+          className="border-white/10 hover:bg-white/5"
+          title={t.zoomIn}
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className="text-xs h-8 ml-2"
-          onClick={() => setZoom(1)}
-          disabled={zoom === 1}
+          onClick={handleResetZoom}
+          className="border-white/10 hover:bg-white/5"
+          title={t.resetZoom}
         >
-          Reset
+          <RotateCcw className="h-4 w-4" />
         </Button>
       </div>
     </div>

@@ -1,5 +1,12 @@
 
-export type ProjectStatus = 'pending' | 'approved' | 'rejected';
+export type ProjectStatus = 'pending' | 'in-review' | 'final' | 'approved' | 'rejected';
+
+export type AuditLogEvent = {
+  timestamp: string;
+  action: 'created' | 'viewed' | 'approved' | 'rejected' | 'commented' | 'reminded';
+  ipAddress?: string;
+  userAgent?: string;
+};
 
 export type Project = {
   id: string;
@@ -21,4 +28,10 @@ export type Project = {
   comments?: string;
   customerRating?: 1 | 2 | 3 | 4 | 5;
   progress?: number; // Progress value between 0-100
+  auditLog?: AuditLogEvent[];
+  lastViewed?: string;
+  language?: 'en' | 'de';
+  internalNotes?: string;
+  archived?: boolean;
+  version?: number; // For tracking design versions (v1, v2, final)
 };

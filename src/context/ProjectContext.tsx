@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import { Project, ProjectStatus } from '@/types/project';
+import { Project, ProjectStatus, AuditLogEvent } from '@/types/project';
 import { ProjectContextType } from './ProjectContextType';
 import { mockProjects } from '@/data/mockProjects';
 import { 
@@ -10,8 +10,18 @@ import {
   getProjectById, 
   getProjectByIdAndKey as getProjectByIdAndKeyUtil,
   updateProjectStatus as updateProjectStatusUtil,
-  updateProjectRating as updateProjectRatingUtil
+  updateProjectRating as updateProjectRatingUtil,
+  addAuditLogEntry,
+  setProjectArchived as setProjectArchivedUtil,
+  updateInternalNotes as updateInternalNotesUtil,
+  updateProjectVersion as updateProjectVersionUtil,
+  updateProjectLanguage as updateProjectLanguageUtil,
+  deleteProject as deleteProjectUtil
 } from '@/utils/projectUtils';
+import { 
+  sendProjectNotification, 
+  sendReminderEmail as sendReminderEmailUtil 
+} from '@/utils/emailService';
 
 // Create the context with undefined as initial value
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -48,7 +58,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchProjects();
   }, []);
 
-  const addProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey'>) => {
+  // Helper function to update localStorage
+  const updateLocalStorage = (updatedProjects: Project[]) => {
+    localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
+  };
+
+  const addProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>) => {
     // Generate a random ID and magicKey
     const newId = generateProjectId();
     const magicKey = generateMagicKey();
@@ -59,17 +74,26 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       status: 'pending',
       createdAt: new Date().toISOString(),
       magicKey,
-      progress: projectData.progress || 70 // Default to 70% if not provided
+      progress: projectData.progress || 20, // Default to 20% for pending status
+      auditLog: [{
+        timestamp: new Date().toISOString(),
+        action: 'created'
+      }],
+      version: 1
     };
     
     const updatedProjects = [...projects, newProject];
     setProjects(updatedProjects);
-    localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
+    updateLocalStorage(updatedProjects);
     
     toast({
       title: 'Project created',
       description: `${newProject.name} has been created successfully`,
     });
+    
+    // Send email notification
+    const language = newProject.language || 'en';
+    sendProjectNotification(newProject, language);
     
     // In a real app, this would send an email with the magic link
     console.log(`Magic link for project ${newProject.name}: /portal?id=${newId}&key=${magicKey}`);
@@ -89,13 +113,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const updatedProjects = updateProjectStatusUtil(projects, id, status, comments);
     
     setProjects(updatedProjects);
-    localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
+    updateLocalStorage(updatedProjects);
     
-    const statusText = status === 'approved' ? 'approved' : 'rejected';
+    const statusText = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : status;
     toast({
       title: `Project ${statusText}`,
       description: `The project has been ${statusText} successfully`,
-      variant: status === 'approved' ? 'default' : 'destructive',
+      variant: status === 'approved' ? 'default' : status === 'rejected' ? 'destructive' : 'default',
     });
   };
 
@@ -103,11 +127,98 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const updatedProjects = updateProjectRatingUtil(projects, id, rating);
     
     setProjects(updatedProjects);
-    localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
+    updateLocalStorage(updatedProjects);
     
     toast({
       title: 'Rating submitted',
       description: 'Thank you for your feedback!',
+    });
+  };
+
+  const addAuditLog = (id: string, event: Omit<AuditLogEvent, 'timestamp'>) => {
+    const updatedProjects = addAuditLogEntry(projects, id, event);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+  };
+
+  const setProjectArchived = (id: string, archived: boolean) => {
+    const updatedProjects = setProjectArchivedUtil(projects, id, archived);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: archived ? 'Project archived' : 'Project restored',
+      description: archived 
+        ? 'The project has been moved to archives' 
+        : 'The project has been restored from archives',
+    });
+  };
+
+  const updateInternalNotes = (id: string, notes: string) => {
+    const updatedProjects = updateInternalNotesUtil(projects, id, notes);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Notes updated',
+      description: 'Internal notes have been saved',
+    });
+  };
+
+  const updateProjectVersion = (id: string, version: number) => {
+    const updatedProjects = updateProjectVersionUtil(projects, id, version);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Version updated',
+      description: `Project version set to v${version}`,
+    });
+  };
+
+  const updateProjectLanguage = (id: string, language: 'en' | 'de') => {
+    const updatedProjects = updateProjectLanguageUtil(projects, id, language);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Language updated',
+      description: `Project language set to ${language === 'en' ? 'English' : 'German'}`,
+    });
+  };
+
+  const sendReminderEmail = async (id: string): Promise<boolean> => {
+    const project = getProject(id);
+    if (!project) return false;
+    
+    const language = project.language || 'en';
+    const success = await sendReminderEmailUtil(project, language);
+    
+    if (success) {
+      // Add audit log entry for the reminder
+      const updatedProjects = addAuditLogEntry(projects, id, { action: 'reminded' });
+      setProjects(updatedProjects);
+      updateLocalStorage(updatedProjects);
+    }
+    
+    return success;
+  };
+
+  const deleteProject = (id: string) => {
+    const updatedProjects = deleteProjectUtil(projects, id);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Project deleted',
+      description: 'The project has been permanently deleted',
+      variant: 'destructive',
     });
   };
 
@@ -121,7 +232,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getProject, 
         getProjectByIdAndKey,
         updateProjectStatus,
-        updateProjectRating
+        updateProjectRating,
+        addAuditLog,
+        setProjectArchived,
+        updateInternalNotes,
+        updateProjectVersion,
+        updateProjectLanguage,
+        sendReminderEmail,
+        deleteProject
       }}
     >
       {children}

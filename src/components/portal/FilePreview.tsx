@@ -4,15 +4,36 @@ import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { Project } from '@/context/ProjectContext';
 
+// Translation content
+const translations = {
+  en: {
+    download: 'Download',
+    previewNotAvailable: 'Preview not available for this file type',
+    downloadFile: 'Download File'
+  },
+  de: {
+    download: 'Herunterladen',
+    previewNotAvailable: 'Vorschau für diesen Dateityp nicht verfügbar',
+    downloadFile: 'Datei herunterladen'
+  }
+};
+
 type FilePreviewProps = {
   fileData: Project['fileData'],
   zoom: number,
-  onDownload: () => void
+  onDownload: () => void,
+  language?: 'en' | 'de'
 };
 
-const FilePreview: React.FC<FilePreviewProps> = ({ fileData, zoom, onDownload }) => {
+const FilePreview: React.FC<FilePreviewProps> = ({ 
+  fileData, 
+  zoom, 
+  onDownload,
+  language = 'en'
+}) => {
   if (!fileData) return null;
   
+  const t = translations[language];
   const isImage = fileData.fileType.startsWith('image/');
   const isPdf = fileData.fileType === 'application/pdf';
   
@@ -26,7 +47,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileData, zoom, onDownload })
           onClick={onDownload}
         >
           <Download className="h-4 w-4 mr-2" />
-          Download
+          {t.download}
         </Button>
       </div>
       
@@ -47,13 +68,13 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileData, zoom, onDownload })
         )}
         {!isImage && !isPdf && (
           <div className="p-8 text-center text-designer-text-secondary">
-            <p>Preview not available for this file type</p>
+            <p>{t.previewNotAvailable}</p>
             <Button 
               className="mt-4"
               onClick={onDownload}
             >
               <Download className="h-4 w-4 mr-2" />
-              Download File
+              {t.downloadFile}
             </Button>
           </div>
         )}
