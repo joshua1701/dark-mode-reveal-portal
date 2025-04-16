@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,22 +20,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Upload, UserPlus, Users, UserCircle, Mail } from 'lucide-react';
+import { Settings, Upload, UserPlus, Users, UserCircle, Mail, ExternalLink } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { UserRole } from '@/types/project';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-
-interface SMTPConfigForm {
-  enabled: boolean;
-  host: string;
-  port: number;
-  secure: boolean;
-  username: string;
-  password: string;
-  fromEmail: string;
-  fromName: string;
-}
+import { getSmtpConfig, saveSmtpConfig, SMTPConfig } from '@/utils/emailService';
 
 const SettingsMenu = () => {
   const { user, updateProfileImage, addUser, users } = useAuth();
@@ -49,20 +40,24 @@ const SettingsMenu = () => {
   const [inviteLink, setInviteLink] = useState('');
   
   // SMTP configuration state
-  const [smtpConfig, setSmtpConfig] = useState<SMTPConfigForm>({
+  const [smtpConfig, setSmtpConfig] = useState<SMTPConfig>({
     enabled: true,
     host: "smtp.example.com",
     port: 587,
     secure: false,
-    username: "notifications@cogswellshare.com",
-    password: "",
+    auth: {
+      user: "notifications@cogswellshare.com",
+      pass: ""
+    },
     fromEmail: "notifications@cogswellshare.com",
     fromName: "CogswellShare"
   });
 
-  const smtpForm = useForm<SMTPConfigForm>({
-    defaultValues: smtpConfig
-  });
+  // Load SMTP config on component mount
+  useEffect(() => {
+    const config = getSmtpConfig();
+    setSmtpConfig(config);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -113,13 +108,21 @@ const SettingsMenu = () => {
     });
   };
 
-  const handleSaveSmtpSettings = (data: SMTPConfigForm) => {
-    // In a real app, this would save to a backend
-    setSmtpConfig(data);
-    toast({
-      title: 'SMTP settings saved',
-      description: 'Your email configuration has been updated',
-    });
+  const handleSaveSmtpSettings = () => {
+    const success = saveSmtpConfig(smtpConfig);
+    
+    if (success) {
+      toast({
+        title: 'SMTP settings saved',
+        description: 'Your email configuration has been updated',
+      });
+    } else {
+      toast({
+        title: 'Error saving settings',
+        description: 'There was a problem saving your SMTP configuration',
+        variant: "destructive",
+      });
+    }
   };
 
   const handleTestSmtpConnection = () => {
@@ -221,6 +224,18 @@ const SettingsMenu = () => {
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
                   <Input id="role" value={user?.role} disabled className="bg-white/5" />
+                </div>
+                
+                <div className="mt-4">
+                  <a 
+                    href="https://cogswell.de" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-designer-text-secondary hover:text-white"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Need help? Visit cogswell.de
+                  </a>
                 </div>
               </div>
             </div>
@@ -346,7 +361,7 @@ const SettingsMenu = () => {
                 SMTP Configuration
               </h3>
               
-              <form onSubmit={smtpForm.handleSubmit(handleSaveSmtpSettings)} className="space-y-4">
+              <div className="space-y-4">
                 <div className="flex items-center space-x-2 mb-4">
                   <input 
                     type="checkbox" 
@@ -402,8 +417,11 @@ const SettingsMenu = () => {
                     <Label htmlFor="smtp-username">SMTP Username</Label>
                     <Input 
                       id="smtp-username" 
-                      value={smtpConfig.username} 
-                      onChange={(e) => setSmtpConfig({...smtpConfig, username: e.target.value})} 
+                      value={smtpConfig.auth.user} 
+                      onChange={(e) => setSmtpConfig({
+                        ...smtpConfig, 
+                        auth: {...smtpConfig.auth, user: e.target.value}
+                      })} 
                       placeholder="user@example.com"
                       className="bg-white/5 border-white/10"
                       disabled={!smtpConfig.enabled}
@@ -415,8 +433,11 @@ const SettingsMenu = () => {
                     <Input 
                       id="smtp-password" 
                       type="password"
-                      value={smtpConfig.password} 
-                      onChange={(e) => setSmtpConfig({...smtpConfig, password: e.target.value})} 
+                      value={smtpConfig.auth.pass} 
+                      onChange={(e) => setSmtpConfig({
+                        ...smtpConfig, 
+                        auth: {...smtpConfig.auth, pass: e.target.value}
+                      })} 
                       placeholder="••••••••"
                       className="bg-white/5 border-white/10"
                       disabled={!smtpConfig.enabled}
@@ -460,13 +481,14 @@ const SettingsMenu = () => {
                     Test Connection
                   </Button>
                   <Button 
-                    type="submit"
+                    type="button"
+                    onClick={handleSaveSmtpSettings}
                     disabled={!smtpConfig.enabled}
                   >
                     Save SMTP Settings
                   </Button>
                 </div>
-              </form>
+              </div>
             </div>
           </TabsContent>
           
@@ -477,6 +499,18 @@ const SettingsMenu = () => {
               <p className="text-designer-text-secondary">
                 Preferences will be added in a future update.
               </p>
+              
+              <div className="mt-4">
+                <a 
+                  href="https://cogswell.de" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-designer-text-secondary hover:text-white"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Visit cogswell.de for support
+                </a>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

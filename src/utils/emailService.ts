@@ -2,32 +2,60 @@
 import { Project } from "@/types/project";
 import { toast } from "@/components/ui/use-toast";
 
-// SMTP configuration (in a real app, these would be environment variables)
-const SMTP_CONFIG = {
-  enabled: true, // Toggle this for testing without sending actual emails
+// SMTP configuration type
+export type SMTPConfig = {
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  auth: {
+    user: string;
+    pass: string;
+  };
+  fromEmail: string;
+  fromName: string;
+};
+
+// Default SMTP configuration
+const DEFAULT_SMTP_CONFIG: SMTPConfig = {
+  enabled: true,
   host: "smtp.example.com",
   port: 587,
   secure: false,
   auth: {
     user: "notifications@cogswellshare.com",
-    pass: "your_smtp_password"
+    pass: ""
   },
   fromEmail: "notifications@cogswellshare.com",
   fromName: "CogswellShare"
 };
 
-// This function would retrieve the SMTP config from localStorage in a real app
-export const getSmtpConfig = () => {
-  // In a real implementation, this would get the SMTP config from localStorage or an API
-  // For simplicity, we'll just return the default config
-  return SMTP_CONFIG;
+// LocalStorage key for SMTP config
+const SMTP_CONFIG_KEY = 'cogswellshare_smtp_config';
+
+// This function retrieves the SMTP config from localStorage
+export const getSmtpConfig = (): SMTPConfig => {
+  try {
+    const storedConfig = localStorage.getItem(SMTP_CONFIG_KEY);
+    if (storedConfig) {
+      return JSON.parse(storedConfig) as SMTPConfig;
+    }
+  } catch (error) {
+    console.error("Error retrieving SMTP config:", error);
+  }
+  return DEFAULT_SMTP_CONFIG;
 };
 
-// This function would save the SMTP config to localStorage in a real app
-export const saveSmtpConfig = (config: typeof SMTP_CONFIG) => {
-  // In a real implementation, this would save the SMTP config to localStorage or an API
-  // For simplicity, we'll just log it
-  console.log("Saving SMTP config:", config);
+// This function saves the SMTP config to localStorage
+export const saveSmtpConfig = (config: SMTPConfig): boolean => {
+  try {
+    localStorage.setItem(SMTP_CONFIG_KEY, JSON.stringify(config));
+    console.log("SMTP config saved:", config);
+    return true;
+  } catch (error) {
+    console.error("Error saving SMTP config:", error);
+    return false;
+  }
 };
 
 // Email templates in both English and German
