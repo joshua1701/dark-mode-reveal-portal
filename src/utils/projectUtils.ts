@@ -150,6 +150,20 @@ export const updateProjectLanguage = (
   });
 };
 
+// Update brand name
+export const updateBrandName = (
+  projects: Project[],
+  id: string,
+  brandName: string
+): Project[] => {
+  return projects.map(project => {
+    if (project.id === id) {
+      return { ...project, brandName };
+    }
+    return project;
+  });
+};
+
 // Delete a project
 export const deleteProject = (
   projects: Project[],

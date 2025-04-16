@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Project, ProjectStatus, AuditLogEvent } from '@/types/project';
@@ -16,6 +15,7 @@ import {
   updateInternalNotes as updateInternalNotesUtil,
   updateProjectVersion as updateProjectVersionUtil,
   updateProjectLanguage as updateProjectLanguageUtil,
+  updateBrandName as updateBrandNameUtil,
   deleteProject as deleteProjectUtil
 } from '@/utils/projectUtils';
 import { 
@@ -23,7 +23,6 @@ import {
   sendReminderEmail as sendReminderEmailUtil 
 } from '@/utils/emailService';
 
-// Create the context with undefined as initial value
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -32,14 +31,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate API call to fetch projects
     const fetchProjects = async () => {
       try {
         setLoading(true);
-        // Simulate a delay
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Load projects from localStorage or use mock data
         const savedProjects = localStorage.getItem('designer_portal_projects');
         if (savedProjects) {
           setProjects(JSON.parse(savedProjects));
@@ -58,13 +54,11 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchProjects();
   }, []);
 
-  // Helper function to update localStorage
   const updateLocalStorage = (updatedProjects: Project[]) => {
     localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
   };
 
   const addProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>) => {
-    // Generate a random ID and magicKey
     const newId = generateProjectId();
     const magicKey = generateMagicKey();
     
@@ -74,7 +68,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       status: 'pending',
       createdAt: new Date().toISOString(),
       magicKey,
-      progress: projectData.progress || 20, // Default to 20% for pending status
+      progress: projectData.progress || 20,
       auditLog: [{
         timestamp: new Date().toISOString(),
         action: 'created'
@@ -91,11 +85,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       description: `${newProject.name} has been created successfully`,
     });
     
-    // Send email notification
     const language = newProject.language || 'en';
     sendProjectNotification(newProject, language);
     
-    // In a real app, this would send an email with the magic link
     console.log(`Magic link for project ${newProject.name}: /portal?id=${newId}&key=${magicKey}`);
     
     return newProject;
@@ -192,6 +184,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
+  const updateBrandName = (id: string, brandName: string) => {
+    const updatedProjects = updateBrandNameUtil(projects, id, brandName);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Brand name updated',
+      description: `Project brand name set to "${brandName}"`,
+    });
+  };
+
   const sendReminderEmail = async (id: string): Promise<boolean> => {
     const project = getProject(id);
     if (!project) return false;
@@ -200,7 +204,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const success = await sendReminderEmailUtil(project, language);
     
     if (success) {
-      // Add audit log entry for the reminder
       const updatedProjects = addAuditLogEntry(projects, id, { action: 'reminded' });
       setProjects(updatedProjects);
       updateLocalStorage(updatedProjects);
@@ -238,6 +241,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateInternalNotes,
         updateProjectVersion,
         updateProjectLanguage,
+        updateBrandName,
         sendReminderEmail,
         deleteProject
       }}
@@ -255,5 +259,4 @@ export const useProjects = () => {
   return context;
 };
 
-// Re-export types for convenience
 export { type Project, type ProjectStatus } from '@/types/project';
