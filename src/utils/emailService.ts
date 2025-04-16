@@ -16,6 +16,20 @@ const SMTP_CONFIG = {
   fromName: "CogswellShare"
 };
 
+// This function would retrieve the SMTP config from localStorage in a real app
+export const getSmtpConfig = () => {
+  // In a real implementation, this would get the SMTP config from localStorage or an API
+  // For simplicity, we'll just return the default config
+  return SMTP_CONFIG;
+};
+
+// This function would save the SMTP config to localStorage in a real app
+export const saveSmtpConfig = (config: typeof SMTP_CONFIG) => {
+  // In a real implementation, this would save the SMTP config to localStorage or an API
+  // For simplicity, we'll just log it
+  console.log("Saving SMTP config:", config);
+};
+
 // Email templates in both English and German
 const EMAIL_TEMPLATES = {
   // Project creation notification
@@ -77,7 +91,9 @@ export const sendEmail = async (
   subject: string,
   htmlBody: string
 ): Promise<boolean> => {
-  if (!SMTP_CONFIG.enabled) {
+  const config = getSmtpConfig();
+  
+  if (!config.enabled) {
     console.log("Email sending disabled. Would have sent:", { to, subject });
     return true;
   }
@@ -88,6 +104,7 @@ export const sendEmail = async (
     console.log("Sending email to:", to);
     console.log("Subject:", subject);
     console.log("Body:", htmlBody);
+    console.log("Using SMTP config:", config);
     
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 800));

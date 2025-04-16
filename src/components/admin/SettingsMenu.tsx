@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -20,9 +19,22 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Upload, UserPlus, Users, UserCircle } from 'lucide-react';
+import { Settings, Upload, UserPlus, Users, UserCircle, Mail } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { UserRole } from '@/types/project';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+
+interface SMTPConfigForm {
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
+}
 
 const SettingsMenu = () => {
   const { user, updateProfileImage, addUser, users } = useAuth();
@@ -35,6 +47,22 @@ const SettingsMenu = () => {
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('admin');
   const [inviteLink, setInviteLink] = useState('');
+  
+  // SMTP configuration state
+  const [smtpConfig, setSmtpConfig] = useState<SMTPConfigForm>({
+    enabled: true,
+    host: "smtp.example.com",
+    port: 587,
+    secure: false,
+    username: "notifications@cogswellshare.com",
+    password: "",
+    fromEmail: "notifications@cogswellshare.com",
+    fromName: "CogswellShare"
+  });
+
+  const smtpForm = useForm<SMTPConfigForm>({
+    defaultValues: smtpConfig
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -85,6 +113,30 @@ const SettingsMenu = () => {
     });
   };
 
+  const handleSaveSmtpSettings = (data: SMTPConfigForm) => {
+    // In a real app, this would save to a backend
+    setSmtpConfig(data);
+    toast({
+      title: 'SMTP settings saved',
+      description: 'Your email configuration has been updated',
+    });
+  };
+
+  const handleTestSmtpConnection = () => {
+    toast({
+      title: 'Testing SMTP connection',
+      description: 'Sending a test email...',
+    });
+    
+    // Simulate test email
+    setTimeout(() => {
+      toast({
+        title: 'Test email sent',
+        description: 'SMTP connection successful',
+      });
+    }, 1500);
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -114,9 +166,10 @@ const SettingsMenu = () => {
         </DialogHeader>
         
         <Tabs defaultValue="profile" className="mt-4">
-          <TabsList className="grid grid-cols-3 bg-white/5">
+          <TabsList className="grid grid-cols-4 bg-white/5">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="email">Email</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
           </TabsList>
           
@@ -282,6 +335,138 @@ const SettingsMenu = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          </TabsContent>
+          
+          {/* Email Tab */}
+          <TabsContent value="email" className="py-4">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                SMTP Configuration
+              </h3>
+              
+              <form onSubmit={smtpForm.handleSubmit(handleSaveSmtpSettings)} className="space-y-4">
+                <div className="flex items-center space-x-2 mb-4">
+                  <input 
+                    type="checkbox" 
+                    id="smtp-enabled" 
+                    checked={smtpConfig.enabled}
+                    onChange={(e) => setSmtpConfig({...smtpConfig, enabled: e.target.checked})}
+                    className="accent-designer-badge"
+                  />
+                  <Label htmlFor="smtp-enabled" className="cursor-pointer">Enable email notifications</Label>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-host">SMTP Host</Label>
+                    <Input 
+                      id="smtp-host" 
+                      value={smtpConfig.host} 
+                      onChange={(e) => setSmtpConfig({...smtpConfig, host: e.target.value})} 
+                      placeholder="smtp.example.com"
+                      className="bg-white/5 border-white/10"
+                      disabled={!smtpConfig.enabled}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-port">SMTP Port</Label>
+                    <Input 
+                      id="smtp-port" 
+                      type="number"
+                      value={smtpConfig.port.toString()} 
+                      onChange={(e) => setSmtpConfig({...smtpConfig, port: parseInt(e.target.value) || 587})} 
+                      placeholder="587"
+                      className="bg-white/5 border-white/10"
+                      disabled={!smtpConfig.enabled}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2 my-2">
+                  <input 
+                    type="checkbox" 
+                    id="smtp-secure" 
+                    checked={smtpConfig.secure}
+                    onChange={(e) => setSmtpConfig({...smtpConfig, secure: e.target.checked})}
+                    className="accent-designer-badge"
+                    disabled={!smtpConfig.enabled}
+                  />
+                  <Label htmlFor="smtp-secure" className="cursor-pointer">Use SSL/TLS</Label>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-username">SMTP Username</Label>
+                    <Input 
+                      id="smtp-username" 
+                      value={smtpConfig.username} 
+                      onChange={(e) => setSmtpConfig({...smtpConfig, username: e.target.value})} 
+                      placeholder="user@example.com"
+                      className="bg-white/5 border-white/10"
+                      disabled={!smtpConfig.enabled}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-password">SMTP Password</Label>
+                    <Input 
+                      id="smtp-password" 
+                      type="password"
+                      value={smtpConfig.password} 
+                      onChange={(e) => setSmtpConfig({...smtpConfig, password: e.target.value})} 
+                      placeholder="••••••••"
+                      className="bg-white/5 border-white/10"
+                      disabled={!smtpConfig.enabled}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-from-email">From Email</Label>
+                    <Input 
+                      id="smtp-from-email" 
+                      value={smtpConfig.fromEmail} 
+                      onChange={(e) => setSmtpConfig({...smtpConfig, fromEmail: e.target.value})} 
+                      placeholder="notifications@yourcompany.com"
+                      className="bg-white/5 border-white/10"
+                      disabled={!smtpConfig.enabled}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="smtp-from-name">From Name</Label>
+                    <Input 
+                      id="smtp-from-name" 
+                      value={smtpConfig.fromName} 
+                      onChange={(e) => setSmtpConfig({...smtpConfig, fromName: e.target.value})} 
+                      placeholder="Your Company Name"
+                      className="bg-white/5 border-white/10"
+                      disabled={!smtpConfig.enabled}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={handleTestSmtpConnection}
+                    disabled={!smtpConfig.enabled}
+                  >
+                    Test Connection
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={!smtpConfig.enabled}
+                  >
+                    Save SMTP Settings
+                  </Button>
+                </div>
+              </form>
             </div>
           </TabsContent>
           

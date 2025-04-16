@@ -189,14 +189,6 @@ const Login = () => {
           </CardFooter>
         </form>
       </Card>
-      
-      {!isRegistration && (
-        <p className="mt-4 text-designer-text-secondary text-sm">
-          For demo purposes, use the following credentials:
-          <br />
-          Username: <span className="font-mono">Joshua</span> | Password: <span className="font-mono">Cogswell2024!</span>
-        </p>
-      )}
     </div>
   );
 };
