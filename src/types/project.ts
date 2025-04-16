@@ -34,5 +34,17 @@ export type Project = {
   internalNotes?: string;
   archived?: boolean;
   version?: number; // For tracking design versions (v1, v2, final)
-  brandName?: string; // Added brand name field
+  brandName?: string; // Brand name field
+};
+
+export type UserRole = 'admin' | 'customer';
+
+export type User = {
+  id: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  profileImage?: string;
+  createdAt: string;
+  createdBy?: string;
 };
