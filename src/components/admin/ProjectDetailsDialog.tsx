@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useProjects, Project } from '@/context/ProjectContext';
 import {
@@ -21,7 +20,7 @@ import {
   X,
   Flag,
   MessageSquare,
-  Language,
+  Languages,
   ExternalLink
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
@@ -154,7 +153,7 @@ const ProjectDetailsDialog: React.FC<ProjectDetailsDialogProps> = ({
               
               <div className="bg-white/5 p-3 rounded border border-white/10">
                 <div className="flex items-center text-designer-text-secondary mb-1">
-                  <Language className="w-4 h-4 mr-1" /> Language
+                  <Languages className="w-4 h-4 mr-1" /> Language
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge 
