@@ -17,6 +17,11 @@ const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) => {
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen justify-center items-center bg-designer-background text-designer-text-primary">
+        <img 
+          src="/lovable-uploads/b906aa0a-ce73-4a5d-bf54-a39b37f9e953.png" 
+          alt="CogswellShare" 
+          className="h-16 mb-6"
+        />
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
         <p>Loading...</p>
       </div>
@@ -29,7 +34,12 @@ const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) => {
         <header className="bg-black/20 border-b border-white/10 py-3 px-6">
           <div className="container mx-auto flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <h1 className="text-xl font-bold text-white">Designer Approval Portal</h1>
+              <img 
+                src="/lovable-uploads/b906aa0a-ce73-4a5d-bf54-a39b37f9e953.png" 
+                alt="CogswellShare" 
+                className="h-10"
+              />
+              <h1 className="text-xl font-bold text-white">CogswellShare</h1>
             </div>
             
             <div className="flex items-center gap-2">
@@ -58,7 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children, showHeader = true }) => {
       </main>
       
       <footer className="mt-auto py-4 px-6 text-center text-xs text-designer-text-secondary border-t border-white/10">
-        <p>© 2024 Designer Approval Portal. All rights reserved.</p>
+        <p>© 2024 CogswellShare. All rights reserved.</p>
       </footer>
     </div>
   );

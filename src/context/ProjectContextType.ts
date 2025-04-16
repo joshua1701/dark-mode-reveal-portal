@@ -15,6 +15,7 @@ export type ProjectContextType = {
   updateInternalNotes: (id: string, notes: string) => void;
   updateProjectVersion: (id: string, version: number) => void;
   updateProjectLanguage: (id: string, language: 'en' | 'de') => void;
+  updateBrandName: (id: string, brandName: string) => void;
   sendReminderEmail: (id: string) => Promise<boolean>;
   deleteProject: (id: string) => void;
 };

@@ -70,9 +70,9 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     <div className="w-full md:w-[320px] bg-black/40 border-r border-white/10 p-6 flex flex-col">
       <div className="mb-6">
         <img 
-          src="/lovable-uploads/c396cd61-c7de-47be-b58c-edff18e58dbf.png" 
+          src="/lovable-uploads/b906aa0a-ce73-4a5d-bf54-a39b37f9e953.png" 
           alt="CogswellShare" 
-          className="h-10 mb-4"
+          className="h-12 mb-4"
         />
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold mb-2">{project.name}</h1>
@@ -171,6 +171,10 @@ const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           )}
         </div>
       )}
+      
+      <div className="mt-6 pt-6 border-t border-white/10 text-center">
+        <p className="text-xs text-designer-text-secondary">Powered by CogswellShare</p>
+      </div>
     </div>
   );
 };

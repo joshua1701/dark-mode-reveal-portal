@@ -56,9 +56,15 @@ const ViewportToolbar: React.FC<ViewportToolbarProps> = ({
   
   return (
     <div className="bg-black/50 border-b border-white/10 p-3 flex flex-wrap justify-between gap-2">
-      <div className="flex space-x-1">
+      <div className="flex items-center">
+        <img 
+          src="/lovable-uploads/b906aa0a-ce73-4a5d-bf54-a39b37f9e953.png" 
+          alt="CogswellShare" 
+          className="h-6 mr-4 hidden md:block"
+        />
+        
         {hasPreviewUrl && (
-          <>
+          <div className="flex space-x-1">
             <Button
               variant="outline"
               size="sm"
@@ -86,7 +92,7 @@ const ViewportToolbar: React.FC<ViewportToolbarProps> = ({
             >
               <Monitor className="h-4 w-4" />
             </Button>
-          </>
+          </div>
         )}
       </div>
       

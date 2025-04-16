@@ -21,13 +21,16 @@ const PortalViewport: React.FC<PortalViewportProps> = ({ url, viewport, zoom }) 
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center overflow-auto bg-black/20 rounded-lg">
+    <div className="w-full h-full flex items-center justify-center overflow-auto bg-black/20 rounded-lg relative">
       <iframe 
         src={url} 
         style={getViewportStyle()}
         className="border-0 transition-all duration-300 ease-in-out"
         title="Project Preview"
       />
+      <div className="absolute bottom-4 right-4 text-xs text-white/30">
+        Powered by CogswellShare
+      </div>
     </div>
   );
 };

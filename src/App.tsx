@@ -30,6 +30,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Document title
+document.title = "CogswellShare";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>

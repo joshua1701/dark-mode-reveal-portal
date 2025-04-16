@@ -34,4 +34,5 @@ export type Project = {
   internalNotes?: string;
   archived?: boolean;
   version?: number; // For tracking design versions (v1, v2, final)
+  brandName?: string; // Added brand name field
 };
