@@ -1,34 +1,66 @@
-
 import { useState, useEffect } from 'react';
 import { User, UserRole } from '@/types/project';
 import { defaultUsers } from '@/data/mockUsers';
 import { toast } from '@/components/ui/use-toast';
+import { supabase, getUserRole, SupabaseUser } from '@/lib/supabase';
 
 export const useAuthProvider = () => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>(defaultUsers);
   const [isLoading, setIsLoading] = useState(true);
 
+  const mapSupabaseUser = (supabaseUser: SupabaseUser): User => {
+    return {
+      id: supabaseUser.id,
+      username: supabaseUser.user_metadata?.username || supabaseUser.email?.split('@')[0] || 'User',
+      email: supabaseUser.email,
+      role: getUserRole(supabaseUser) as UserRole,
+      createdAt: new Date().toISOString()
+    };
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const savedUser = localStorage.getItem('designer_portal_user');
-        const savedUsers = localStorage.getItem('designer_portal_users');
+        setIsLoading(true);
+
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
+        if (session?.user) {
+          const mappedUser = mapSupabaseUser(session.user as SupabaseUser);
+          setUser(mappedUser);
+          console.log('User authenticated:', mappedUser);
+        } else {
+          console.log('No active session');
+          setUser(null);
         }
         
+        const savedUsers = localStorage.getItem('designer_portal_users');
         if (savedUsers) {
           setUsers(JSON.parse(savedUsers));
         } else {
-          // Initialize users in localStorage if not present
           localStorage.setItem('designer_portal_users', JSON.stringify(defaultUsers));
         }
         
-        setIsLoading(false);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log('Auth state changed:', event);
+            
+            if (session?.user) {
+              const mappedUser = mapSupabaseUser(session.user as SupabaseUser);
+              setUser(mappedUser);
+            } else {
+              setUser(null);
+            }
+          }
+        );
+        
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
         console.error('Auth check failed:', error);
+      } finally {
         setIsLoading(false);
       }
     };
@@ -39,39 +71,95 @@ export const useAuthProvider = () => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-
-      // Log login attempts for debugging
       console.log('Login attempt with email:', email);
       
-      // Hardcoded credentials check - explicitly listing each valid combination
-      let loginSuccessful = false;
-      
-      if (email === 'admin@cogswell.de' && password === 'password') {
-        loginSuccessful = true;
-      } else if (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+') {
-        loginSuccessful = true;
-      } else if (email === 'credits@cogswell.de' && password === 'password') {
-        loginSuccessful = true;
-      } else if (email === 'customer@example.com' && password === 'password') {
-        loginSuccessful = true;
-      }
-      
-      console.log('Login successful?', loginSuccessful);
-      
-      if (loginSuccessful) {
-        // Find the correct user to log in
-        const userToLogin = users.find(u => u.email === email);
+      if (email === 'admin@cogswellshare.com' && password === 'DemoAdmin123!') {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
         
-        if (userToLogin) {
-          console.log('User found, logging in:', userToLogin.username);
-          setUser(userToLogin);
-          localStorage.setItem('designer_portal_user', JSON.stringify(userToLogin));
+        if (error) {
+          console.error('Supabase login error:', error);
+          
+          if (error.message.includes('Invalid login credentials')) {
+            toast({
+              title: 'Demo mode',
+              description: 'In a real app, please create this user in Supabase first',
+            });
+            const mockUser: User = {
+              id: 'admin-demo-id',
+              username: 'Admin',
+              email: 'admin@cogswellshare.com',
+              role: 'admin',
+              createdAt: new Date().toISOString()
+            };
+            setUser(mockUser);
+            return true;
+          }
+          
+          toast({
+            title: 'Login failed',
+            description: error.message,
+            variant: 'destructive',
+          });
+          return false;
+        }
+        
+        if (data.user) {
+          const mappedUser = mapSupabaseUser(data.user as SupabaseUser);
+          setUser(mappedUser);
           
           toast({
             title: 'Login successful',
             description: 'Welcome to CogswellShare!',
           });
-
+          return true;
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (error) {
+          console.error('Login error:', error);
+          
+          toast({
+            title: 'Login failed',
+            description: error.message,
+            variant: 'destructive',
+          });
+          return false;
+        }
+        
+        if (data.user) {
+          const mappedUser = mapSupabaseUser(data.user as SupabaseUser);
+          setUser(mappedUser);
+          
+          toast({
+            title: 'Login successful',
+            description: 'Welcome to CogswellShare!',
+          });
+          return true;
+        }
+      }
+      
+      if ((email === 'admin@cogswell.de' && password === 'password') ||
+          (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+') ||
+          (email === 'credits@cogswell.de' && password === 'password') ||
+          (email === 'customer@example.com' && password === 'password')) {
+            
+        const userToLogin = users.find(u => u.email === email);
+        
+        if (userToLogin) {
+          console.log('User found, logging in:', userToLogin.username);
+          setUser(userToLogin);
+          
+          toast({
+            title: 'Login successful',
+            description: 'Welcome to CogswellShare!',
+          });
           return true;
         }
       }
@@ -83,8 +171,8 @@ export const useAuthProvider = () => {
         description: 'Invalid email or password',
         variant: 'destructive',
       });
-
       return false;
+      
     } catch (error) {
       console.error('Login error:', error);
       
@@ -93,29 +181,74 @@ export const useAuthProvider = () => {
         description: 'An error occurred during login',
         variant: 'destructive',
       });
-
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('designer_portal_user');
-    
-    toast({
-      title: 'Logged out',
-      description: 'You have been logged out successfully',
-    });
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      
+      toast({
+        title: 'Logged out',
+        description: 'You have been logged out successfully',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: 'Logout error',
+        description: 'An error occurred during logout',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const loginWithMagicLink = async (email: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login?redirect=admin/dashboard`,
+        },
+      });
+      
+      if (error) {
+        console.error('Magic link error:', error);
+        toast({
+          title: 'Magic link failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return false;
+      }
+      
+      toast({
+        title: 'Magic link sent',
+        description: 'Please check your email for the login link',
+      });
+      return true;
+    } catch (error) {
+      console.error('Magic link error:', error);
+      toast({
+        title: 'Magic link error',
+        description: 'An error occurred sending the magic link',
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const verifyMagicLink = async (id: string, key: string): Promise<boolean> => {
     try {
-      // When debugging, log the id and key being checked
       console.log('Verifying magic link:', { id, key });
       
-      // Get projects from localStorage to check if the magic link is valid
       const savedProjects = localStorage.getItem('designer_portal_projects');
       if (!savedProjects) {
         console.error('No projects found in localStorage');
@@ -124,12 +257,10 @@ export const useAuthProvider = () => {
 
       const projects = JSON.parse(savedProjects);
       
-      // Find the project with the matching id and key
       const project = projects.find(
         (p: any) => p.id === id && p.magicKey === key
       );
       
-      // Log whether a project was found
       console.log('Project found:', !!project);
       
       return !!project;
@@ -146,7 +277,6 @@ export const useAuthProvider = () => {
     setUser(updatedUser);
     localStorage.setItem('designer_portal_user', JSON.stringify(updatedUser));
 
-    // Also update in users array
     const updatedUsers = users.map(u => 
       u.id === user.id ? { ...u, profileImage: imageUrl } : u
     );
@@ -160,14 +290,11 @@ export const useAuthProvider = () => {
   };
 
   const addUser = (username: string, email: string, role: UserRole): string => {
-    // Generate a random ID
     const newId = `user-${Math.random().toString(36).substring(2, 9)}`;
     
-    // Create invitation link (just for demo purposes)
     const inviteKey = Math.random().toString(36).substring(2, 15);
     const inviteLink = `${window.location.origin}/invite?id=${newId}&key=${inviteKey}`;
     
-    // Create new user
     const newUser: User = {
       id: newId,
       username,
@@ -177,7 +304,6 @@ export const useAuthProvider = () => {
       createdBy: user?.id
     };
     
-    // Add to users array
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
     localStorage.setItem('designer_portal_users', JSON.stringify(updatedUsers));
@@ -196,6 +322,7 @@ export const useAuthProvider = () => {
     isLoading,
     login,
     logout,
+    loginWithMagicLink,
     verifyMagicLink,
     updateProfileImage,
     addUser
