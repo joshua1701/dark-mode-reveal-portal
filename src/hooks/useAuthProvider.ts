@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User, UserRole } from '@/types/project';
 import { defaultUsers } from '@/data/mockUsers';
@@ -40,35 +39,32 @@ export const useAuthProvider = () => {
     try {
       setIsLoading(true);
 
+      // Added logging to debug login attempts
+      console.log('Login attempt with:', email);
+      
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mock authentication for admin users
-      if ((email === 'admin@cogswell.de' && password === 'password') ||
-          (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+') ||
-          (email === 'credits@cogswell.de' && password === 'password')) {
+      // Simplify the login check logic to fix authentication issues
+      // Define the valid login credentials explicitly
+      const validCredentials = [
+        { email: 'admin@cogswell.de', password: 'password' },
+        { email: 'joshua@cogswell.de', password: 'Cogswell1234#+' },
+        { email: 'credits@cogswell.de', password: 'password' },
+        { email: 'customer@example.com', password: 'password' }
+      ];
+      
+      // Check if credentials match any valid combination
+      const isValidLogin = validCredentials.some(
+        cred => cred.email === email && cred.password === password
+      );
+      
+      if (isValidLogin) {
         // Find the correct user to log in
         const userToLogin = users.find(u => u.email === email);
         
         if (userToLogin) {
           setUser(userToLogin);
           localStorage.setItem('designer_portal_user', JSON.stringify(userToLogin));
-          
-          toast({
-            title: 'Login successful',
-            description: 'Welcome back to CogswellShare!',
-          });
-
-          return true;
-        }
-      }
-      
-      // Mock authentication for customer users
-      if (email === 'customer@example.com' && password === 'password') {
-        const customerUser = users.find(u => u.email === email);
-        
-        if (customerUser) {
-          setUser(customerUser);
-          localStorage.setItem('designer_portal_user', JSON.stringify(customerUser));
           
           toast({
             title: 'Login successful',

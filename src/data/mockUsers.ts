@@ -18,7 +18,7 @@ export const joshuaUser: User = {
   createdAt: new Date().toISOString()
 };
 
-// New admin user with credits
+// Credits admin user
 export const creditsAdmin: User = {
   id: 'admin-3',
   username: 'Credits Admin',

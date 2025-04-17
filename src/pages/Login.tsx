@@ -14,7 +14,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -46,7 +46,7 @@ const Login = () => {
       const foundUser = users.find(u => u.id === invite);
       if (foundUser) {
         setInvitedUser(foundUser);
-        setUsername(foundUser.username);
+        setEmail(foundUser.email);
       } else {
         toast({
           title: 'Invalid invitation',
@@ -82,7 +82,7 @@ const Login = () => {
       
       // In a real app, we would register the user with new password
       // For this demo, we'll just log them in
-      const success = await login(username, newPassword);
+      const success = await login(email, newPassword);
       if (success) {
         // Redirect based on role
         if (invitedUser && invitedUser.role === 'customer') {
@@ -92,10 +92,11 @@ const Login = () => {
         }
       }
     } else {
-      const success = await login(username, password);
+      console.log('Attempting login with:', email, password);
+      const success = await login(email, password);
       if (success) {
         // Get the current user to determine their role
-        const currentUser = users.find(u => u.email === username);
+        const currentUser = users.find(u => u.email === email);
         if (currentUser && currentUser.role === 'customer') {
           navigate('/customer/dashboard');
         } else {
@@ -130,13 +131,13 @@ const Login = () => {
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
                 required
                 disabled={isRegistration}
                 className="bg-white/5 border-white/10"
