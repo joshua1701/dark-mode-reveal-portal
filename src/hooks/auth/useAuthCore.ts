@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { User } from '@/types/project';
+import { User, UserRole } from '@/types/project';
 import { supabase, handleSupabaseError, demoUsers } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
 
@@ -59,7 +60,7 @@ export const useAuthCore = () => {
         id: demoUser.id,
         username: demoUser.username,
         email: demoUser.email,
-        role: demoUser.role,
+        role: demoUser.role as UserRole, // Explicitly cast to UserRole
         createdAt: demoUser.createdAt,
       };
       
