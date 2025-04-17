@@ -12,12 +12,14 @@ const ProjectNotFound: React.FC<ProjectNotFoundProps> = ({ language, onNavigateH
     en: {
       projectNotFound: 'Project Not Found',
       invalidLink: 'This project link is invalid or expired',
-      returnHome: 'Return Home'
+      returnHome: 'Return Home',
+      helpText: 'Need help? Contact the project creator for a valid link.'
     },
     de: {
       projectNotFound: 'Projekt nicht gefunden',
       invalidLink: 'Dieser Projektlink ist ungültig oder abgelaufen',
-      returnHome: 'Zur Startseite'
+      returnHome: 'Zur Startseite',
+      helpText: 'Brauchen Sie Hilfe? Kontaktieren Sie den Projektersteller für einen gültigen Link.'
     }
   };
 
@@ -39,9 +41,9 @@ const ProjectNotFound: React.FC<ProjectNotFoundProps> = ({ language, onNavigateH
         {t.returnHome}
       </button>
       <div className="mt-8 text-center">
-        <a href="https://cogswell.de" target="_blank" rel="noopener noreferrer" className="text-designer-text-secondary underline hover:text-white">
-          Need help? Visit cogswell.de
-        </a>
+        <p className="text-designer-text-secondary">
+          {t.helpText}
+        </p>
       </div>
     </div>
   );

@@ -16,27 +16,17 @@ export const sendEmail = async (
   }
   
   try {
-    // Use EmailJS service to send emails
-    const emailData = {
-      service_id: "default_service", 
-      template_id: "template_default",
-      user_id: "user_id", // We'll use the default emailjs service for now
-      template_params: {
-        to_email: to,
-        subject: subject,
-        message_html: htmlBody,
-        from_name: config.fromName,
-        from_email: config.fromEmail,
-        reply_to: config.fromEmail
-      }
-    };
+    // In a production environment, we would connect to a real email service
+    // For development/demo purposes, we'll simulate successful sending
+    console.log("Email data:", {
+      to: to,
+      subject: subject,
+      body: htmlBody,
+      from: config.fromEmail,
+    });
     
-    console.log("Preparing to send email:", emailData);
-    
-    // In production, this would connect to an email service API
-    // For now, we'll simulate successful email sending since EmailJS requires frontend integration
-    console.log("Email sent successfully to:", to);
-    
+    // Return true to simulate successful email sending
+    // In production, this would use a real email sending API or service
     return true;
   } catch (error) {
     console.error("Failed to send email:", error);

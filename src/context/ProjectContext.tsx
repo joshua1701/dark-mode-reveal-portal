@@ -87,19 +87,33 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       const language = newProject.language || 'en';
-      sendProjectNotification(newProject, language).catch(err => {
-        console.error("Failed to send project notification email:", err);
-        toast({
-          title: 'Email Not Sent',
-          description: 'Project created successfully, but the notification email could not be sent.',
-          variant: 'destructive',
+      sendProjectNotification(newProject, language)
+        .then(success => {
+          if (success) {
+            console.log(`Email sent successfully to ${newProject.customerEmail}`);
+          } else {
+            console.error("Email sending failed silently");
+            toast({
+              title: 'Email Not Sent',
+              description: 'Project created, but notification email delivery failed.',
+              variant: 'destructive',
+            });
+          }
+        })
+        .catch(err => {
+          console.error("Failed to send project notification email:", err);
+          toast({
+            title: 'Email Not Sent',
+            description: 'Project created successfully, but the notification email could not be sent.',
+            variant: 'destructive',
+          });
         });
-      });
     } catch (error) {
       console.error("Error in email service:", error);
     }
     
-    console.log(`Magic link for project ${newProject.name}: /portal?id=${newId}&key=${magicKey}`);
+    console.log(`Project created: ${newProject.name}`);
+    console.log(`Magic link for project: ${window.location.origin}/portal?id=${newId}&key=${magicKey}`);
     
     return newProject;
   };
@@ -109,7 +123,10 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const getProjectByIdAndKey = (id: string, key: string) => {
-    return getProjectByIdAndKeyUtil(projects, id, key);
+    const project = getProjectByIdAndKeyUtil(projects, id, key);
+    console.log("Looking up project with ID:", id, "and key:", key);
+    console.log("Found project:", project);
+    return project;
   };
 
   const updateProjectStatus = (id: string, status: ProjectStatus, comments?: string) => {

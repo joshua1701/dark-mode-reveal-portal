@@ -58,6 +58,9 @@ const Portal = () => {
     const key = params.get('key');
     
     const loadProject = async () => {
+      // Debug logs to help track down issues
+      console.log("URL parameters:", { id, key });
+      
       // If no id or key in the URL, show token input modal
       if (!id || !key) {
         setIsVerifying(false);
@@ -65,8 +68,10 @@ const Portal = () => {
         return;
       }
       
-      // Fix: Use the correct parameter order for verifyMagicLink
+      // Verify the magic link
       const isValid = await verifyMagicLink(id, key);
+      console.log("Magic link verification result:", isValid);
+      
       if (!isValid) {
         setIsVerifying(false);
         toast({
@@ -89,7 +94,7 @@ const Portal = () => {
         setIsVerifying(false);
         toast({
           title: 'Project Not Found',
-          description: 'The requested project could not be found',
+          description: 'The requested project could not be found. Please check your link.',
           variant: 'destructive',
         });
         return;
