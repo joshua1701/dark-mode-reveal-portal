@@ -13,13 +13,15 @@ const ProjectNotFound: React.FC<ProjectNotFoundProps> = ({ language, onNavigateH
       projectNotFound: 'Project Not Found',
       invalidLink: 'This project link is invalid or expired',
       returnHome: 'Return Home',
-      helpText: 'Need help? Contact the project creator for a valid link.'
+      helpText: 'Need help? Contact the project creator for a valid link.',
+      checkLink: 'Please check your link or ask for a new one.'
     },
     de: {
       projectNotFound: 'Projekt nicht gefunden',
       invalidLink: 'Dieser Projektlink ist ungültig oder abgelaufen',
       returnHome: 'Zur Startseite',
-      helpText: 'Brauchen Sie Hilfe? Kontaktieren Sie den Projektersteller für einen gültigen Link.'
+      helpText: 'Brauchen Sie Hilfe? Kontaktieren Sie den Projektersteller für einen gültigen Link.',
+      checkLink: 'Bitte überprüfen Sie Ihren Link oder bitten Sie um einen neuen.'
     }
   };
 
@@ -33,7 +35,8 @@ const ProjectNotFound: React.FC<ProjectNotFoundProps> = ({ language, onNavigateH
         className="h-16 mb-6"
       />
       <h1 className="text-2xl font-bold mb-4">{t.projectNotFound}</h1>
-      <p className="text-designer-text-secondary mb-6">{t.invalidLink}</p>
+      <p className="text-designer-text-secondary mb-2">{t.invalidLink}</p>
+      <p className="text-designer-text-secondary mb-6">{t.checkLink}</p>
       <button 
         onClick={onNavigateHome}
         className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md transition-colors"

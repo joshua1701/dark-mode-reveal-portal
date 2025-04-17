@@ -51,6 +51,7 @@ const Portal = () => {
   const [token, setToken] = useState('');
   const [tokenError, setTokenError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -68,70 +69,80 @@ const Portal = () => {
         return;
       }
       
-      // Verify the magic link
-      const isValid = await verifyMagicLink(id, key);
-      console.log("Magic link verification result:", isValid);
-      
-      if (!isValid) {
-        setIsVerifying(false);
-        toast({
-          title: 'Invalid Link',
-          description: 'This project link is invalid or expired',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      const foundProject = getProjectByIdAndKey(id, key);
-      
-      // Debug logging to see what's happening
-      console.log("Available projects:", projects);
-      console.log("Looking for project with id:", id);
-      console.log("Looking for project with key:", key);
-      console.log("Found project:", foundProject);
-      
-      if (!foundProject) {
-        setIsVerifying(false);
-        toast({
-          title: 'Project Not Found',
-          description: 'The requested project could not be found. Please check your link.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      // Check if project is expired
-      if (foundProject.expiresAt) {
-        const expiryDate = new Date(foundProject.expiresAt);
-        if (expiryDate < new Date()) {
-          setIsExpired(true);
-        }
-      }
-
-      setProject(foundProject);
-      setLanguage(foundProject.language || 'en');
-      
-      // Log view in audit log
       try {
-        const ipAddress = await getUserIP();
-        const userAgent = navigator.userAgent;
+        // Verify the magic link
+        const isValid = await verifyMagicLink(id, key);
+        console.log("Magic link verification result:", isValid);
         
-        addAuditLog(foundProject.id, {
-          action: 'viewed',
-          ipAddress,
-          userAgent
-        });
+        if (!isValid) {
+          setIsVerifying(false);
+          setLinkError("Invalid or expired link");
+          toast({
+            title: 'Invalid Link',
+            description: 'This project link is invalid or expired',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        // Log available projects to help with debugging
+        console.log("Projects in context:", projects);
+        
+        const foundProject = getProjectByIdAndKey(id, key);
+        
+        // Debug logging to see what's happening
+        console.log("Looking for project with id:", id);
+        console.log("Looking for project with key:", key);
+        console.log("Found project:", foundProject);
+        
+        if (!foundProject) {
+          setIsVerifying(false);
+          setLinkError("Project not found");
+          toast({
+            title: 'Project Not Found',
+            description: 'The requested project could not be found. Please check your link.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        // Check if project is expired
+        if (foundProject.expiresAt) {
+          const expiryDate = new Date(foundProject.expiresAt);
+          if (expiryDate < new Date()) {
+            setIsExpired(true);
+          }
+        }
+        
+        setProject(foundProject);
+        setLanguage(foundProject.language || 'en');
+        
+        // Log view in audit log
+        try {
+          const ipAddress = await getUserIP();
+          const userAgent = navigator.userAgent;
+          
+          addAuditLog(foundProject.id, {
+            action: 'viewed',
+            ipAddress,
+            userAgent
+          });
+        } catch (error) {
+          console.error('Failed to log view:', error);
+        }
+        
+        if (foundProject.hasPassword) {
+          setIsPasswordModalOpen(true);
+        } else {
+          setIsVerified(true);
+        }
+        
+        setIsVerifying(false);
       } catch (error) {
-        console.error('Failed to log view:', error);
+        console.error('Error loading project:', error);
+        setLinkError("Error loading project");
+        setIsVerifying(false);
       }
-      
-      if (foundProject.hasPassword) {
-        setIsPasswordModalOpen(true);
-      } else {
-        setIsVerified(true);
-      }
-      
-      setIsVerifying(false);
     };
     
     loadProject();
@@ -320,7 +331,7 @@ const Portal = () => {
     );
   }
   
-  if (!project) {
+  if (linkError || !project) {
     return <ProjectNotFound language={language} onNavigateHome={() => navigate('/')} />;
   }
   

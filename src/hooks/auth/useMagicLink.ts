@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
@@ -44,8 +45,12 @@ export const useMagicLink = () => {
     }
   };
 
-  // Keep the two-parameter signature for verifyMagicLink
   const verifyMagicLink = async (id: string, key: string): Promise<boolean> => {
+    if (!id || !key) {
+      console.error('Missing project ID or key');
+      return false;
+    }
+
     try {
       console.log('Verifying magic link:', { id, key });
       
@@ -57,11 +62,14 @@ export const useMagicLink = () => {
 
       const projects = JSON.parse(savedProjects);
       
+      // Log the projects to help with debugging
+      console.log('Available projects:', projects);
+      
       const project = projects.find(
         (p: any) => p.id === id && p.magicKey === key
       );
       
-      console.log('Project found:', !!project);
+      console.log('Project found:', project ? 'yes' : 'no');
       
       return !!project;
     } catch (error) {
