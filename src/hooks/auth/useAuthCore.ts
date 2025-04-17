@@ -1,14 +1,13 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '@/types/project';
-import { supabase, handleSupabaseError } from '@/lib/supabase';
+import { supabase, handleSupabaseError, demoUsers } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
 
 export const useAuthCore = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
-  // Initialize the auth state from localStorage on component mount
   useEffect(() => {
     const savedUser = localStorage.getItem('designer_portal_user');
     if (savedUser) {
@@ -20,12 +19,10 @@ export const useAuthCore = () => {
       }
     }
     
-    // Check for existing Supabase session
     const checkSession = async () => {
       try {
         const { data } = await supabase.auth.getSession();
         if (data?.session?.user) {
-          // If we have a session but no user in localStorage, create one
           const supabaseUser = data.session.user;
           if (!savedUser) {
             const newUser: User = {
@@ -41,55 +38,115 @@ export const useAuthCore = () => {
         }
       } catch (error) {
         console.error('Error checking session:', error);
+        setIsOfflineMode(true);
+        toast({
+          title: 'Offline Mode',
+          description: 'Using offline mode due to connection issues.',
+        });
       }
     };
     
     checkSession();
   }, []);
 
-  // Login method to authenticate user
+  const offlineLogin = (email: string, password: string): User | null => {
+    const demoUser = demoUsers.find(
+      u => u.email === email && u.password === password
+    );
+    
+    if (demoUser) {
+      const newUser: User = {
+        id: demoUser.id,
+        username: demoUser.username,
+        email: demoUser.email,
+        role: demoUser.role,
+        createdAt: demoUser.createdAt,
+      };
+      
+      return newUser;
+    }
+    
+    return null;
+  };
+
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
-      // Log login attempt
       console.log(`Attempting login for email: ${email}`);
       
-      // Attempt login with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        console.error('Login error:', error);
-        handleSupabaseError(error);
-        setIsLoading(false);
-        return false;
+      if (!isOfflineMode) {
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          if (error) {
+            console.error('Login error:', error);
+            const shouldUseOffline = handleSupabaseError(error);
+            
+            if (shouldUseOffline) {
+              setIsOfflineMode(true);
+            } else {
+              setIsLoading(false);
+              return false;
+            }
+          } else if (data?.user) {
+            const userRole: UserRole = email === 'admin@cogswellshare.com' ? 'admin' : 'customer';
+            const newUser: User = {
+              id: data.user.id,
+              username: email.split('@')[0],
+              email: email,
+              role: userRole,
+              createdAt: new Date().toISOString(),
+            };
+            
+            setUser(newUser);
+            localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+            
+            toast({
+              title: 'Login Successful',
+              description: `Welcome back, ${newUser.username}!`,
+            });
+            
+            setIsLoading(false);
+            return true;
+          }
+        } catch (err) {
+          console.error('Supabase connection error:', err);
+          setIsOfflineMode(true);
+          toast({
+            title: 'Connection Error',
+            description: 'Switched to offline mode',
+          });
+        }
       }
       
-      if (data?.user) {
-        // Create user object from Supabase user
-        const role = email === 'admin@cogswellshare.com' ? 'admin' : 'customer';
-        const newUser: User = {
-          id: data.user.id,
-          username: email.split('@')[0],
-          email: email,
-          role: role,
-          createdAt: new Date().toISOString(),
-        };
+      if (isOfflineMode) {
+        const offlineUser = offlineLogin(email, password);
         
-        // Update state and localStorage
-        setUser(newUser);
-        localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
-        
-        toast({
-          title: 'Login Successful',
-          description: `Welcome back, ${newUser.username}!`,
-        });
-        
-        setIsLoading(false);
-        return true;
+        if (offlineUser) {
+          setUser(offlineUser);
+          localStorage.setItem('designer_portal_user', JSON.stringify(offlineUser));
+          
+          toast({
+            title: 'Offline Login Successful',
+            description: `Welcome back, ${offlineUser.username}! (Offline Mode)`,
+          });
+          
+          setIsLoading(false);
+          return true;
+        } else {
+          toast({
+            title: 'Login Failed',
+            description: 'Invalid email or password.',
+            variant: 'destructive'
+          });
+          
+          setIsLoading(false);
+          return false;
+        }
       }
       
       setIsLoading(false);
@@ -102,15 +159,18 @@ export const useAuthCore = () => {
     }
   };
 
-  // Logout method to sign out user
   const logout = async () => {
     setIsLoading(true);
     
     try {
-      // Sign out from Supabase
-      await supabase.auth.signOut();
+      if (!isOfflineMode) {
+        try {
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error('Supabase logout error:', error);
+        }
+      }
       
-      // Clear user from state and localStorage
       setUser(null);
       localStorage.removeItem('designer_portal_user');
       
@@ -134,6 +194,7 @@ export const useAuthCore = () => {
     user,
     setUser,
     isLoading,
+    isOfflineMode,
     login,
     logout
   };

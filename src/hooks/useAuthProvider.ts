@@ -9,6 +9,7 @@ export const useAuthProvider = () => {
   const { 
     user, 
     isLoading: authLoading, 
+    isOfflineMode,
     setUser,
     login, 
     logout 
@@ -25,7 +26,7 @@ export const useAuthProvider = () => {
   const { 
     users, 
     updateProfileImage: updateUserProfileImage,
-    addUser 
+    addUser: addUserToSystem
   } = useUserManagement(user);
 
   // Combine the loading states
@@ -42,11 +43,17 @@ export const useAuthProvider = () => {
     }
   };
 
+  // Wrapper for addUser to match the type in AuthContextType
+  const addUser = (userDetails: Omit<User, 'id' | 'createdAt'>) => {
+    return addUserToSystem(userDetails.username, userDetails.email, userDetails.role);
+  };
+
   // Combine all the hooks into a unified API
   return {
     user,
     users,
     isLoading,
+    isOfflineMode,
     login,
     logout,
     loginWithMagicLink,

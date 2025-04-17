@@ -5,17 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Mail, Key, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Mail, Key, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type LoginFormProps = {
   onSwitchToRegistration?: () => void;
 };
 
 const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
-  const { login, loginWithMagicLink, isLoading, users } = useAuth();
+  const { login, loginWithMagicLink, isLoading, users, isOfflineMode } = useAuth();
   const navigate = useNavigate();
   
   const [email, setEmail] = useState('');
@@ -63,6 +64,16 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
     e.preventDefault();
     if (isLoading) return;
 
+    if (isOfflineMode) {
+      toast({
+        title: "Magic Link Unavailable",
+        description: "Magic link login is not available in offline mode. Please use password login.",
+        variant: "destructive"
+      });
+      setActiveTab('password');
+      return;
+    }
+
     try {
       const trimmedEmail = magicLinkEmail.trim();
       const success = await loginWithMagicLink(trimmedEmail);
@@ -94,12 +105,21 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
         <CardDescription>
           Enter your credentials to access the portal
         </CardDescription>
+        
+        {isOfflineMode && (
+          <Alert variant="destructive" className="mt-2 bg-yellow-500/20 border-yellow-600/50">
+            <WifiOff className="h-4 w-4 mr-2" />
+            <AlertDescription className="text-white">
+              Running in offline mode. Only demo accounts are available.
+            </AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
       
       <Tabs defaultValue="password" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2 bg-black/20">
           <TabsTrigger value="password">Password</TabsTrigger>
-          <TabsTrigger value="magic-link">Magic Link</TabsTrigger>
+          <TabsTrigger value="magic-link" disabled={isOfflineMode}>Magic Link</TabsTrigger>
         </TabsList>
         
         <TabsContent value="password">
