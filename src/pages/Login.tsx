@@ -95,11 +95,17 @@ const Login = () => {
       // Add debugging log to verify what's being sent
       console.log('Attempting login with:', email, password);
       
+      // Trim email and password to prevent whitespace issues
+      const trimmedEmail = email.trim();
+      const trimmedPassword = password;
+      
       // Execute login
-      const success = await login(email, password);
+      const success = await login(trimmedEmail, trimmedPassword);
+      console.log('Login result:', success);
+      
       if (success) {
         // Redirect based on user role
-        const currentUser = users.find(u => u.email === email);
+        const currentUser = users.find(u => u.email === trimmedEmail);
         if (currentUser && currentUser.role === 'customer') {
           navigate('/customer/dashboard');
         } else {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { User, UserRole } from '@/types/project';
 import { defaultUsers } from '@/data/mockUsers';
@@ -40,24 +41,29 @@ export const useAuthProvider = () => {
       setIsLoading(true);
 
       // Log login attempts for debugging
-      console.log('Login attempt with:', email);
+      console.log('Login attempt with email:', email);
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Hardcoded credentials check - explicitly listing each valid combination
+      let loginSuccessful = false;
       
-      // Define login credentials without validation logic to ensure it works
-      const loginSuccessful = (
-        (email === 'admin@cogswell.de' && password === 'password') ||
-        (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+') ||
-        (email === 'credits@cogswell.de' && password === 'password') ||
-        (email === 'customer@example.com' && password === 'password')
-      );
+      if (email === 'admin@cogswell.de' && password === 'password') {
+        loginSuccessful = true;
+      } else if (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+') {
+        loginSuccessful = true;
+      } else if (email === 'credits@cogswell.de' && password === 'password') {
+        loginSuccessful = true;
+      } else if (email === 'customer@example.com' && password === 'password') {
+        loginSuccessful = true;
+      }
+      
+      console.log('Login successful?', loginSuccessful);
       
       if (loginSuccessful) {
         // Find the correct user to log in
         const userToLogin = users.find(u => u.email === email);
         
         if (userToLogin) {
+          console.log('User found, logging in:', userToLogin.username);
           setUser(userToLogin);
           localStorage.setItem('designer_portal_user', JSON.stringify(userToLogin));
           
@@ -69,6 +75,8 @@ export const useAuthProvider = () => {
           return true;
         }
       }
+      
+      console.log('Login failed for email:', email);
       
       toast({
         title: 'Login failed',
