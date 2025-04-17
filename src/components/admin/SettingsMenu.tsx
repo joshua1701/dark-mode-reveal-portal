@@ -23,8 +23,6 @@ import { Label } from '@/components/ui/label';
 import { Settings, Upload, UserPlus, Users, UserCircle, Mail, ExternalLink } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { UserRole } from '@/types/project';
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
 import { getSmtpConfig, saveSmtpConfig, SMTPConfig } from '@/utils/emailService';
 
 const SettingsMenu = () => {
@@ -77,6 +75,7 @@ const SettingsMenu = () => {
   const handleUpload = () => {
     if (imagePreview) {
       updateProfileImage(imagePreview);
+      setImageFile(null);
     }
   };
   
@@ -147,6 +146,9 @@ const SettingsMenu = () => {
       .join('')
       .toUpperCase();
   };
+
+  // Safely handle users array
+  const usersList = users || [];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -325,7 +327,7 @@ const SettingsMenu = () => {
               <h3 className="text-lg font-medium mb-4">Existing Users</h3>
               
               <div className="divide-y divide-white/10">
-                {users.map(u => (
+                {usersList.map(u => (
                   <div key={u.id} className="py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">

@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Settings, Upload, UserCircle } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 
 const UserSettings = () => {
   const { user, updateProfileImage } = useAuth();
@@ -40,6 +41,7 @@ const UserSettings = () => {
   const handleUpload = () => {
     if (imagePreview) {
       updateProfileImage(imagePreview);
+      setImageFile(null);
     }
   };
 
@@ -122,6 +124,12 @@ const UserSettings = () => {
               <Label htmlFor="email">Email</Label>
               <Input id="email" value={user.email} disabled className="bg-white/5" />
             </div>
+          </div>
+          
+          <div className="mt-4 text-center">
+            <a href="https://cogswell.de" target="_blank" rel="noopener noreferrer" className="text-designer-text-secondary underline hover:text-white">
+              Need help? Visit cogswell.de
+            </a>
           </div>
         </div>
         

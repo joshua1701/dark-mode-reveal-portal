@@ -1,14 +1,17 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/types/project';
+import { User, UserRole } from '@/types/project';
 import { toast } from '@/components/ui/use-toast';
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
+  users: User[];
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   verifyMagicLink: (id: string, key: string) => Promise<boolean>;
+  updateProfileImage: (imageUrl: string) => void;
+  addUser: (username: string, email: string, role: UserRole) => string;
 };
 
 const mockUser: User = {
@@ -19,21 +22,42 @@ const mockUser: User = {
   createdAt: new Date().toISOString()
 };
 
+// Default users array
+const defaultUsers: User[] = [
+  mockUser,
+  {
+    id: 'customer-1',
+    username: 'Customer User',
+    email: 'customer@example.com',
+    role: 'customer',
+    createdAt: new Date().toISOString()
+  }
+];
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>(defaultUsers);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const savedUser = localStorage.getItem('designer_portal_user');
+        const savedUsers = localStorage.getItem('designer_portal_users');
         
         if (savedUser) {
           setUser(JSON.parse(savedUser));
+        }
+        
+        if (savedUsers) {
+          setUsers(JSON.parse(savedUsers));
+        } else {
+          // Initialize users in localStorage if not present
+          localStorage.setItem('designer_portal_users', JSON.stringify(defaultUsers));
         }
         
         setIsLoading(false);
@@ -126,14 +150,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const updateProfileImage = (imageUrl: string) => {
+    if (!user) return;
+
+    const updatedUser = { ...user, profileImage: imageUrl };
+    setUser(updatedUser);
+    localStorage.setItem('designer_portal_user', JSON.stringify(updatedUser));
+
+    // Also update in users array
+    const updatedUsers = users.map(u => 
+      u.id === user.id ? { ...u, profileImage: imageUrl } : u
+    );
+    setUsers(updatedUsers);
+    localStorage.setItem('designer_portal_users', JSON.stringify(updatedUsers));
+
+    toast({
+      title: 'Profile updated',
+      description: 'Your profile image has been updated successfully',
+    });
+  };
+
+  const addUser = (username: string, email: string, role: UserRole): string => {
+    // Generate a random ID
+    const newId = `user-${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Create invitation link (just for demo purposes)
+    const inviteKey = Math.random().toString(36).substring(2, 15);
+    const inviteLink = `${window.location.origin}/invite?id=${newId}&key=${inviteKey}`;
+    
+    // Create new user
+    const newUser: User = {
+      id: newId,
+      username,
+      email,
+      role,
+      createdAt: new Date().toISOString(),
+      createdBy: user?.id
+    };
+    
+    // Add to users array
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    localStorage.setItem('designer_portal_users', JSON.stringify(updatedUsers));
+    
+    toast({
+      title: 'User added',
+      description: `${username} has been added successfully`,
+    });
+    
+    return inviteLink;
+  };
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        users,
         isLoading,
         login,
         logout,
         verifyMagicLink,
+        updateProfileImage,
+        addUser
       }}
     >
       {children}
