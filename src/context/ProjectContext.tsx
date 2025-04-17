@@ -59,7 +59,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
   };
 
-  const addProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>) => {
+  const addProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>): Project => {
     const newId = generateProjectId();
     const magicKey = generateMagicKey();
     

@@ -5,7 +5,7 @@ export type ProjectContextType = {
   projects: Project[];
   loading: boolean;
   error: string | null;
-  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>) => void;
+  addProject: (project: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>) => Project;
   getProject: (id: string) => Project | undefined;
   getProjectByIdAndKey: (id: string, key: string) => Project | undefined;
   updateProjectStatus: (id: string, status: ProjectStatus, comments?: string) => void;
