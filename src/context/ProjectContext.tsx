@@ -1,8 +1,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { toast } from '@/components/ui/use-toast';
 import { ProjectContextType } from './ProjectContextType';
-import { Project, ProjectStatus, AuditLogEvent } from '@/types/project';
+import { Project } from '@/types/project';
+import { useProjectOperations } from '@/hooks/useProjectOperations';
+import { useAuditLogOperations } from '@/hooks/useAuditLogOperations';
+import { useProjectManagement } from '@/hooks/useProjectManagement';
+import { useEmailOperations } from '@/hooks/useEmailOperations';
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
@@ -10,6 +13,28 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Initialize hooks
+  const {
+    addProject,
+    getProject,
+    getProjectByIdAndKey,
+    updateProjectStatus,
+    updateProjectRating
+  } = useProjectOperations(projects);
+
+  const { addAuditLog } = useAuditLogOperations(projects, setProjects);
+
+  const {
+    setProjectArchived,
+    updateInternalNotes,
+    updateProjectVersion,
+    updateProjectLanguage,
+    updateBrandName,
+    deleteProject
+  } = useProjectManagement(projects, setProjects);
+
+  const { sendReminderEmail } = useEmailOperations(projects, setProjects, getProject);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -34,413 +59,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     fetchProjects();
   }, []);
-
-  // Helper function to generate a random token
-  const generateToken = (): string => {
-    return `key-${Math.random().toString(36).substring(2, 12)}`;
-  };
-
-  const addProject = async (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>) => {
-    try {
-      const token = generateToken();
-      
-      // Create the project in local state and localStorage
-      const newProject: Project = {
-        id: `proj-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-        name: projectData.name,
-        status: 'pending' as ProjectStatus,
-        createdAt: new Date().toISOString(),
-        customerEmail: projectData.customerEmail,
-        previewUrl: projectData.previewUrl,
-        fileData: projectData.fileData,
-        expiresAt: projectData.expiresAt,
-        hasPassword: projectData.hasPassword,
-        password: projectData.password,
-        magicKey: token,
-        comments: '',
-        progress: projectData.progress || 20,
-        auditLog: [{
-          timestamp: new Date().toISOString(),
-          action: 'created' as AuditLogEvent['action']
-        }],
-        language: projectData.language || 'en',
-        brandName: projectData.brandName,
-        version: 1
-      };
-      
-      // Update local state
-      const updatedProjects = [...projects, newProject];
-      setProjects(updatedProjects);
-      
-      // Also store in localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: 'Project created',
-        description: `${newProject.name} has been created successfully`,
-      });
-      
-      console.log(`Magic link for project ${newProject.name}: /portal?id=${newProject.id}&key=${newProject.magicKey}`);
-      
-      return newProject;
-    } catch (error: any) {
-      console.error('Error in addProject:', error);
-      toast({
-        title: 'Project Creation Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-      return null;
-    }
-  };
-
-  const getProject = (id: string) => {
-    return projects.find(project => project.id === id);
-  };
-
-  const getProjectByIdAndKey = (id: string, key: string) => {
-    return projects.find(project => project.id === id && project.magicKey === key);
-  };
-
-  const updateProjectStatus = async (id: string, status: ProjectStatus, comments?: string) => {
-    try {
-      // Update the project in local state and localStorage
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          const action: AuditLogEvent['action'] = 
-            status === 'approved' ? 'approved' : 
-            status === 'rejected' ? 'rejected' : 'commented';
-            
-          const updatedAuditLog = [
-            ...(project.auditLog || []),
-            {
-              timestamp: new Date().toISOString(),
-              action
-            } as AuditLogEvent
-          ];
-          
-          return { 
-            ...project, 
-            status, 
-            comments: comments || project.comments,
-            progress: calculateProgressByStatus(status, project.progress),
-            auditLog: updatedAuditLog
-          };
-        }
-        return project;
-      });
-      
-      // Update state and localStorage
-      setProjects(updatedProjects);
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      const statusText = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : status;
-      toast({
-        title: `Project ${statusText}`,
-        description: `The project has been ${statusText} successfully`,
-        variant: status === 'approved' ? 'default' : status === 'rejected' ? 'destructive' : 'default',
-      });
-    } catch (error: any) {
-      console.error('Error in updateProjectStatus:', error);
-      toast({
-        title: 'Status Update Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  // Calculate progress based on status
-  const calculateProgressByStatus = (status: ProjectStatus, currentProgress?: number): number => {
-    switch (status) {
-      case 'pending':
-        return 20;
-      case 'in-review':
-        return 40;
-      case 'final':
-        return 80;
-      case 'approved':
-        return 100;
-      case 'rejected':
-        return currentProgress || 50;
-      default:
-        return currentProgress || 20;
-    }
-  };
-
-  const updateProjectRating = async (id: string, rating: 1 | 2 | 3 | 4 | 5) => {
-    try {
-      // Update local state
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          return { ...project, customerRating: rating };
-        }
-        return project;
-      });
-      
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: 'Rating submitted',
-        description: 'Thank you for your feedback!',
-      });
-    } catch (error: any) {
-      console.error('Error in updateProjectRating:', error);
-      toast({
-        title: 'Rating Update Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const addAuditLog = async (id: string, event: Omit<AuditLogEvent, 'timestamp'>) => {
-    try {
-      // Make sure the action is one of the allowed values
-      const validAction: AuditLogEvent['action'] = event.action;
-      
-      // Update local state
-      const timestamp = new Date().toISOString();
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          const auditLog = project.auditLog || [];
-          const newAuditLogEntry: AuditLogEvent = { 
-            ...event, 
-            timestamp,
-            action: validAction
-          };
-          
-          return {
-            ...project,
-            auditLog: [...auditLog, newAuditLogEntry],
-            lastViewed: event.action === 'viewed' ? timestamp : project.lastViewed
-          };
-        }
-        return project;
-      }) as Project[];
-      
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-    } catch (error) {
-      console.error('Error in addAuditLog:', error);
-    }
-  };
-
-  const setProjectArchived = async (id: string, archived: boolean) => {
-    try {
-      // Update local state
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          return { ...project, archived };
-        }
-        return project;
-      });
-      
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: archived ? 'Project archived' : 'Project restored',
-        description: archived 
-          ? 'The project has been moved to archives' 
-          : 'The project has been restored from archives',
-      });
-    } catch (error: any) {
-      console.error('Error in setProjectArchived:', error);
-      toast({
-        title: 'Archive Update Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const updateInternalNotes = async (id: string, notes: string) => {
-    try {
-      // Update local state
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          return { ...project, internalNotes: notes };
-        }
-        return project;
-      });
-      
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: 'Notes updated',
-        description: 'Internal notes have been saved',
-      });
-    } catch (error: any) {
-      console.error('Error in updateInternalNotes:', error);
-      toast({
-        title: 'Notes Update Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const updateProjectVersion = async (id: string, version: number) => {
-    try {
-      // Update local state
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          return { ...project, version };
-        }
-        return project;
-      });
-      
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: 'Version updated',
-        description: `Project version set to v${version}`,
-      });
-    } catch (error: any) {
-      console.error('Error in updateProjectVersion:', error);
-      toast({
-        title: 'Version Update Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const updateProjectLanguage = async (id: string, language: 'en' | 'de') => {
-    try {
-      // Update local state
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          return { ...project, language };
-        }
-        return project;
-      });
-      
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: 'Language updated',
-        description: `Project language set to ${language === 'en' ? 'English' : 'German'}`,
-      });
-    } catch (error: any) {
-      console.error('Error in updateProjectLanguage:', error);
-      toast({
-        title: 'Language Update Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const updateBrandName = async (id: string, brandName: string) => {
-    try {
-      // Update local state
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          return { ...project, brandName };
-        }
-        return project;
-      });
-      
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: 'Brand name updated',
-        description: `Project brand name set to "${brandName}"`,
-      });
-    } catch (error: any) {
-      console.error('Error in updateBrandName:', error);
-      toast({
-        title: 'Brand Name Update Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const sendReminderEmail = async (id: string): Promise<boolean> => {
-    try {
-      const project = getProject(id);
-      if (!project) return false;
-      
-      // This would typically call a server function or API endpoint
-      // For now, we'll just add an audit log entry
-      
-      // Update local state
-      const updatedProjects = projects.map(project => {
-        if (project.id === id) {
-          const auditLog = project.auditLog || [];
-          return {
-            ...project,
-            auditLog: [...auditLog, { 
-              action: 'reminded' as AuditLogEvent['action'],
-              timestamp: new Date().toISOString()
-            }]
-          };
-        }
-        return project;
-      }) as Project[];
-      
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: 'Reminder sent',
-        description: `Reminder email sent to ${project.customerEmail}`,
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Error sending reminder:', error);
-      return false;
-    }
-  };
-
-  const deleteProject = async (id: string) => {
-    try {
-      // Update local state
-      const updatedProjects = projects.filter(project => project.id !== id);
-      setProjects(updatedProjects);
-      
-      // Also update localStorage
-      localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
-      
-      toast({
-        title: 'Project deleted',
-        description: 'The project has been permanently deleted',
-        variant: 'destructive',
-      });
-    } catch (error: any) {
-      console.error('Error in deleteProject:', error);
-      toast({
-        title: 'Delete Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-    }
-  };
 
   return (
     <ProjectContext.Provider 
