@@ -4,6 +4,7 @@ import { User } from '@/types/project';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useOfflineAuth } from './useOfflineAuth';
+import { Button } from '@/components/ui/button';
 
 export const useAuthOperations = (
   user: User | null,
@@ -38,12 +39,13 @@ export const useAuthOperations = (
               title: 'Demo Account',
               description: 'Would you like to create the demo admin account?',
               action: (
-                <button 
+                <Button 
                   onClick={() => createDemoAdmin(email, password)}
-                  className="ml-2 bg-primary text-white px-3 py-1 rounded"
+                  variant="default"
+                  size="sm"
                 >
                   Create Demo Account
-                </button>
+                </Button>
               )
             });
           } else {
