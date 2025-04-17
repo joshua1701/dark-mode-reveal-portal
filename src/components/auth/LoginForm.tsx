@@ -16,7 +16,7 @@ type LoginFormProps = {
 };
 
 const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
-  const { login, loginWithMagicLink, isLoading, users, isOfflineMode } = useAuth();
+  const { login, loginWithMagicLink, isLoading, user, isOfflineMode } = useAuth();
   const navigate = useNavigate();
   
   const [email, setEmail] = useState('');
@@ -24,6 +24,18 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
   const [magicLinkEmail, setMagicLinkEmail] = useState('');
   const [activeTab, setActiveTab] = useState('password');
   const [showPassword, setShowPassword] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
+
+  // If user is already logged in, redirect them
+  React.useEffect(() => {
+    if (user) {
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (user.role === 'customer') {
+        navigate('/customer/dashboard');
+      }
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,13 +54,8 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
       console.log('Login result:', success);
       
       if (success) {
-        // Redirect based on user role
-        const currentUser = users.find(u => u.email === trimmedEmail);
-        if (currentUser && currentUser.role === 'customer') {
-          navigate('/customer/dashboard');
-        } else {
-          navigate('/admin/dashboard');
-        }
+        setLoginSuccess(true);
+        // The redirect is now handled by the useEffect hook
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -110,7 +117,7 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
           <Alert variant="destructive" className="mt-2 bg-yellow-500/20 border-yellow-600/50">
             <WifiOff className="h-4 w-4 mr-2" />
             <AlertDescription className="text-white">
-              Running in offline mode. Only demo accounts are available.
+              Running in offline mode. Use demo accounts: admin@cogswellshare.com / DemoAdmin123! or customer@example.com / DemoCustomer123!
             </AlertDescription>
           </Alert>
         )}
@@ -168,23 +175,30 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
                 </div>
               </div>
               
-              <div className="text-xs text-designer-text-secondary">
-                <p>Demo credentials:</p>
-                <p>Email: admin@cogswellshare.com</p>
-                <p>Password: DemoAdmin123!</p>
-              </div>
+              {loginSuccess && (
+                <Alert className="bg-green-500/20 border-green-600/50">
+                  <AlertDescription className="text-white">
+                    Login successful! Redirecting...
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
             
             <CardFooter>
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={isLoading}
+                disabled={isLoading || loginSuccess}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Please wait
+                  </>
+                ) : loginSuccess ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Redirecting...
                   </>
                 ) : 'Login'}
               </Button>
