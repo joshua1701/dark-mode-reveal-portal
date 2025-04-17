@@ -1,109 +1,131 @@
 
 import { useState, useEffect } from 'react';
 import { User, UserRole } from '@/types/project';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 export const useSession = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    // First check localStorage for a saved user
-    const savedUser = localStorage.getItem('designer_portal_user');
-    let parsedUser: User | null = null;
-    
-    if (savedUser) {
-      try {
-        parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Failed to parse saved user:', error);
-        localStorage.removeItem('designer_portal_user');
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state change event:', event);
+        setSession(session);
+        
+        if (session?.user) {
+          // Don't call Supabase directly in the callback to avoid deadlocks
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        } else {
+          setUser(null);
+          setIsLoading(false);
+        }
       }
-    }
+    );
     
-    // Then try to check online session with Supabase
+    // Check for existing session
     const checkSession = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('Error checking session:', error);
-          setIsOfflineMode(true);
+        setSession(data.session);
+        
+        if (data.session?.user) {
+          await fetchUserProfile(data.session.user.id);
+        } else {
+          // Check localStorage for a saved user (fallback for offline mode)
+          const savedUser = localStorage.getItem('designer_portal_user');
           
-          // Only show offline mode toast if we don't already have a user from localStorage
-          if (!parsedUser) {
-            toast({
-              title: 'Offline Mode',
-              description: 'Using offline mode due to connectivity issues',
-            });
-          }
-        } else if (data?.session?.user) {
-          const supabaseUser = data.session.user;
-          
-          // Only fetch profile if we don't already have a user from localStorage
-          if (!parsedUser) {
+          if (savedUser) {
             try {
-              // Fetch profile from Supabase
-              const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', supabaseUser.id)
-                .single();
-              
-              if (profileError) {
-                console.error('Error fetching profile:', profileError);
-                // fallback to creating a basic user object
-                const newUser: User = {
-                  id: supabaseUser.id,
-                  username: supabaseUser.email?.split('@')[0] || 'User',
-                  email: supabaseUser.email || '',
-                  role: supabaseUser.email === 'admin@cogswellshare.com' ? 'admin' : 'customer',
-                  createdAt: new Date().toISOString(),
-                };
-                setUser(newUser);
-                localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
-              } else if (profileData) {
-                // Map profile data to User type
-                const newUser: User = {
-                  id: profileData.id,
-                  username: profileData.username,
-                  email: profileData.email,
-                  role: profileData.role as UserRole,
-                  profileImage: profileData.profile_image,
-                  createdAt: profileData.created_at,
-                };
-                setUser(newUser);
-                localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
-              }
-            } catch (err) {
-              console.error('Error in profile fetch:', err);
+              const parsedUser = JSON.parse(savedUser);
+              setUser(parsedUser);
               setIsOfflineMode(true);
+            } catch (error) {
+              console.error('Failed to parse saved user:', error);
+              localStorage.removeItem('designer_portal_user');
             }
           }
+          
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('Error checking session:', error);
         setIsOfflineMode(true);
         
-        // Only show offline mode toast if we don't already have a user from localStorage
-        if (!parsedUser) {
-          toast({
-            title: 'Offline Mode',
-            description: 'Using offline mode due to connectivity issues',
-          });
+        // Try to use saved user from localStorage
+        const savedUser = localStorage.getItem('designer_portal_user');
+        if (savedUser) {
+          try {
+            const parsedUser = JSON.parse(savedUser);
+            setUser(parsedUser);
+          } catch (error) {
+            console.error('Failed to parse saved user:', error);
+            localStorage.removeItem('designer_portal_user');
+          }
         }
-      } finally {
+        
         setIsLoading(false);
       }
     };
     
-    // Always check the online session to confirm connectivity status
-    // even if we have a saved user
     checkSession();
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        setIsLoading(false);
+        return;
+      }
+      
+      const user: User = {
+        id: profile.id,
+        username: profile.username,
+        email: profile.email,
+        role: profile.role as UserRole,
+        profileImage: profile.profile_image,
+        createdAt: profile.created_at
+      };
+      
+      setUser(user);
+      localStorage.setItem('designer_portal_user', JSON.stringify(user));
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      setIsLoading(false);
+      
+      // Try to use saved user from localStorage as fallback
+      const savedUser = localStorage.getItem('designer_portal_user');
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          setIsOfflineMode(true);
+        } catch (error) {
+          console.error('Failed to parse saved user:', error);
+          localStorage.removeItem('designer_portal_user');
+        }
+      }
+    }
+  };
 
   return {
     user,
@@ -111,6 +133,7 @@ export const useSession = () => {
     isLoading,
     setIsLoading,
     isOfflineMode,
-    setIsOfflineMode
+    setIsOfflineMode,
+    session
   };
 };

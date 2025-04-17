@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { useProjects, Project, ProjectStatus } from '@/context/ProjectContext';
-import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import TokenModal from '@/components/portal/TokenModal';
@@ -28,8 +28,7 @@ const getUserIP = async (): Promise<string> => {
 };
 
 const Portal = () => {
-  const { projects, getProjectByIdAndKey, updateProjectStatus, updateProjectRating, addAuditLog } = useProjects();
-  const { verifyMagicLink, isLoading } = useAuth();
+  const { getProjectByIdAndKey, updateProjectStatus, updateProjectRating, addAuditLog } = useProjects();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -65,36 +64,96 @@ const Portal = () => {
         return;
       }
       
-      // Fix: Use the correct parameter order for verifyMagicLink
-      const isValid = await verifyMagicLink(id, key);
-      if (!isValid) {
+      try {
+        // Try to fetch the project directly from Supabase
+        const { data: projectData, error } = await supabase
+          .from('projects')
+          .select(`
+            id, name, preview_url, type, status, customer_email, created_at,
+            created_by, expires_at, password_protected, password, token,
+            brand_name, progress, language, archived
+          `)
+          .eq('id', id)
+          .eq('token', key)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching project:', error);
+          // Fall back to local storage
+          const localProject = getProjectByIdAndKey(id, key);
+          
+          if (!localProject) {
+            setIsVerifying(false);
+            toast({
+              title: 'Project Not Found',
+              description: 'The requested project could not be found',
+              variant: 'destructive',
+            });
+            return;
+          }
+          
+          setProject(localProject);
+          setLanguage(localProject.language || 'en');
+          handleProjectFound(localProject);
+        } else {
+          // Fetch audit logs for the project
+          const { data: auditLogData } = await supabase
+            .from('audit_log')
+            .select('*')
+            .eq('project_id', projectData.id)
+            .order('timestamp', { ascending: false });
+          
+          // Find last viewed timestamp
+          const lastViewedEntry = auditLogData?.find((entry: any) => entry.action === 'viewed');
+          
+          // Map to our Project type
+          const mappedProject: Project = {
+            id: projectData.id,
+            name: projectData.name,
+            status: projectData.status as ProjectStatus,
+            createdAt: projectData.created_at,
+            customerEmail: projectData.customer_email,
+            previewUrl: projectData.preview_url,
+            fileData: projectData.type === 'file' ? {
+              fileName: 'file', // Need to fetch file data separately
+              fileType: 'file',
+              fileUrl: projectData.preview_url
+            } : undefined,
+            expiresAt: projectData.expires_at,
+            hasPassword: projectData.password_protected,
+            password: projectData.password,
+            magicKey: projectData.token,
+            comments: '',
+            progress: projectData.progress || 0,
+            auditLog: auditLogData?.map((log: any) => ({
+              timestamp: log.timestamp,
+              action: log.action,
+              ipAddress: log.ip_address,
+              userAgent: log.user_agent
+            })) || [],
+            lastViewed: lastViewedEntry?.timestamp,
+            language: projectData.language || 'en',
+            archived: projectData.archived || false,
+            brandName: projectData.brand_name,
+            version: 1 // Default to version 1
+          };
+          
+          setProject(mappedProject);
+          setLanguage(mappedProject.language || 'en');
+          handleProjectFound(mappedProject);
+        }
+      } catch (error) {
+        console.error('Error loading project:', error);
         setIsVerifying(false);
         toast({
-          title: 'Invalid Link',
-          description: 'This project link is invalid or expired',
+          title: 'Error',
+          description: 'Failed to load project information',
           variant: 'destructive',
         });
-        return;
       }
-      
-      const foundProject = getProjectByIdAndKey(id, key);
-      
-      // Debug logging to see what's happening
-      console.log("Available projects:", projects);
-      console.log("Looking for project with id:", id);
-      console.log("Looking for project with key:", key);
-      console.log("Found project:", foundProject);
-      
-      if (!foundProject) {
-        setIsVerifying(false);
-        toast({
-          title: 'Project Not Found',
-          description: 'The requested project could not be found',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
+    };
+    
+    const handleProjectFound = async (foundProject: Project) => {
       // Check if project is expired
       if (foundProject.expiresAt) {
         const expiryDate = new Date(foundProject.expiresAt);
@@ -102,15 +161,23 @@ const Portal = () => {
           setIsExpired(true);
         }
       }
-
-      setProject(foundProject);
-      setLanguage(foundProject.language || 'en');
       
       // Log view in audit log
       try {
         const ipAddress = await getUserIP();
         const userAgent = navigator.userAgent;
         
+        // Add to Supabase
+        await supabase
+          .from('audit_log')
+          .insert({
+            project_id: foundProject.id,
+            action: 'viewed',
+            ip_address: ipAddress,
+            user_agent: userAgent
+          });
+        
+        // Also update local copy via context
         addAuditLog(foundProject.id, {
           action: 'viewed',
           ipAddress,
@@ -130,7 +197,7 @@ const Portal = () => {
     };
     
     loadProject();
-  }, [location.search, getProjectByIdAndKey, verifyMagicLink, navigate, addAuditLog, projects]);
+  }, [location.search, getProjectByIdAndKey, navigate, addAuditLog]);
   
   const handlePasswordSubmit = () => {
     if (!project) return;
@@ -157,13 +224,27 @@ const Portal = () => {
     }
 
     const [id, key] = parts;
-    // Fix: Use the correct parameter order for verifyMagicLink
-    const isValid = await verifyMagicLink(id, key);
-
-    if (isValid) {
+    
+    try {
+      // Try to fetch the project from Supabase
+      const { data: projectData, error } = await supabase
+        .from('projects')
+        .select('id, token')
+        .eq('id', id)
+        .eq('token', key)
+        .single();
+      
+      if (error || !projectData) {
+        setTokenError(language === 'en' ? 
+          'Invalid token. Please try again.' : 
+          'Ungültiger Token. Bitte versuchen Sie es erneut.');
+        return;
+      }
+      
       // Redirect to the project page with the id and key
       navigate(`/portal?id=${id}&key=${key}`);
-    } else {
+    } catch (error) {
+      console.error('Error verifying token:', error);
       setTokenError(language === 'en' ? 
         'Invalid token. Please try again.' : 
         'Ungültiger Token. Bitte versuchen Sie es erneut.');
@@ -192,13 +273,14 @@ const Portal = () => {
     }
   };
   
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!project || isSubmitting) return;
     
     setIsSubmitting(true);
     
     try {
-      updateProjectStatus(project.id, 'rejected', rejectionReason);
+      // Update in Supabase
+      await updateProjectStatus(project.id, 'rejected', rejectionReason);
       
       toast({
         title: language === 'en' ? 'Project Rejected' : 'Projekt abgelehnt',
@@ -227,14 +309,15 @@ const Portal = () => {
     }
   };
   
-  const handleRatingSubmit = () => {
+  const handleRatingSubmit = async () => {
     if (!project || isSubmitting) return;
     
     setIsSubmitting(true);
     
     try {
-      updateProjectRating(project.id, rating);
-      updateProjectStatus(project.id, 'approved');
+      // Update in Supabase
+      await updateProjectRating(project.id, rating);
+      await updateProjectStatus(project.id, 'approved');
       
       toast({
         title: language === 'en' ? 'Project Approved' : 'Projekt genehmigt',
@@ -262,15 +345,43 @@ const Portal = () => {
     }
   };
   
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!project?.fileData) return;
     
-    const link = document.createElement('a');
-    link.href = project.fileData.watermarkedUrl || project.fileData.fileUrl;
-    link.download = `CogswellShare_${project.fileData.fileName}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Try to get a signed URL from Supabase if this is a file in storage
+      const { data: filesData, error: filesError } = await supabase
+        .from('files')
+        .select('url, type')
+        .eq('project_id', project.id)
+        .single();
+      
+      if (filesError) {
+        console.error('Error fetching file info:', filesError);
+        // Fall back to direct URL
+        downloadFile(project.fileData.watermarkedUrl || project.fileData.fileUrl, project.fileData.fileName);
+        return;
+      }
+      
+      // Get a signed URL for the file
+      const { data: signedUrl, error: signError } = await supabase
+        .storage
+        .from('project_files')
+        .createSignedUrl(filesData.url, 60); // Valid for 60 seconds
+      
+      if (signError) {
+        console.error('Error getting signed URL:', signError);
+        // Fall back to direct URL
+        downloadFile(project.fileData.watermarkedUrl || project.fileData.fileUrl, project.fileData.fileName);
+        return;
+      }
+      
+      downloadFile(signedUrl.signedUrl, filesData.url.split('/').pop() || 'download');
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      // Fall back to direct URL
+      downloadFile(project.fileData.watermarkedUrl || project.fileData.fileUrl, project.fileData.fileName);
+    }
     
     toast({
       title: language === 'en' ? 'Download started' : 'Download gestartet',
@@ -283,11 +394,20 @@ const Portal = () => {
     addAuditLog(project.id, { action: 'viewed' });
   };
   
+  const downloadFile = (url: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `CogswellShare_${filename}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
   const handleLanguageChange = (newLanguage: 'en' | 'de') => {
     setLanguage(newLanguage);
   };
   
-  if (isLoading || isVerifying) {
+  if (isVerifying) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-designer-background">
         <img 
