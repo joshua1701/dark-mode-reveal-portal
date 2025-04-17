@@ -4,10 +4,22 @@ import { getProjectById, getProjectByIdAndKey as getProjectByIdAndKeyUtil } from
 
 export const useProjectQueries = (projects: Project[]) => {
   const getProject = (id: string) => {
-    const project = getProjectById(projects, id);
     console.log("Looking up project with ID:", id);
     console.log("Available projects:", projects.length);
+    
+    // Case-insensitive matching for more reliable lookup
+    const project = projects.find(p => p.id.toLowerCase() === id.toLowerCase()) || 
+                    getProjectById(projects, id);
+    
     console.log("Found project:", project ? "Yes" : "No");
+    
+    if (!project && projects.length > 0) {
+      // Log some project IDs for debugging
+      console.log("Sample of available project IDs:", 
+        projects.slice(0, 3).map(p => p.id)
+      );
+    }
+    
     return project;
   };
 

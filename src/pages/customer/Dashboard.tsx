@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useProjects, Project } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
@@ -36,10 +37,15 @@ const CustomerDashboard: React.FC = () => {
     return <Navigate to="/" replace />;
   }
   
+  console.log("Customer Dashboard - Available projects:", projects.length);
+  
   // Filter projects for this customer
   const customerProjects = projects.filter(project => 
     project.customerEmail === user.email && !project.archived
   );
+  
+  console.log("Customer projects found:", customerProjects.length);
+  console.log("Customer projects IDs:", customerProjects.map(p => p.id));
   
   // Filter by search term if provided
   const filteredProjects = searchTerm 
@@ -105,6 +111,9 @@ const ProjectCard: React.FC<{ project: Project }> = ({ project }) => {
       return 'Invalid date';
     }
   };
+  
+  // Ensure we have a valid project ID
+  console.log(`Project card: ${project.name} with ID: ${project.id}`);
   
   return (
     <Card className="overflow-hidden bg-black/40 border-white/10">

@@ -17,7 +17,7 @@ const CustomerProjectView = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
-  const { getProject, updateProjectStatus, updateProjectRating, addAuditLog } = useProjects();
+  const { projects, getProject, updateProjectStatus, updateProjectRating, addAuditLog } = useProjects();
   const [project, setProject] = useState(null);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -26,18 +26,35 @@ const CustomerProjectView = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    console.log("ProjectView useEffect - ID:", id);
+    console.log("Available projects:", projects.length);
+    
     if (id && !isLoading) {
-      const projectData = getProject(id);
-      if (projectData) {
-        setProject(projectData);
+      // Improved project retrieval with better logging
+      console.log("Looking for project with ID:", id);
+      
+      // Attempt to find directly in projects array as fallback
+      let foundProject = getProject(id);
+      
+      if (!foundProject && projects.length > 0) {
+        console.log("Project not found via getProject, trying direct array lookup");
+        foundProject = projects.find(p => p.id === id);
+      }
+      
+      if (foundProject) {
+        console.log("Project found:", foundProject.name);
+        setProject(foundProject);
         // Log the view
         addAuditLog(id, {
           action: 'viewed',
           userAgent: navigator.userAgent
         });
+      } else {
+        console.error("Project not found with ID:", id);
+        console.log("Available project IDs:", projects.map(p => p.id));
       }
     }
-  }, [id, getProject, isLoading, addAuditLog]);
+  }, [id, getProject, isLoading, addAuditLog, projects]);
 
   // If loading, show nothing
   if (isLoading) {
@@ -50,7 +67,45 @@ const CustomerProjectView = () => {
   }
 
   // If project not found or doesn't belong to this customer
-  if (!project || project.customerEmail !== user.email) {
+  if (!project) {
+    console.log("Project not found or doesn't match customer");
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/customer/dashboard')}
+            className="mb-6"
+          >
+            ← Back to Dashboard
+          </Button>
+          
+          <Card className="bg-black/40 border-white/10">
+            <CardHeader>
+              <CardTitle>Project Not Found</CardTitle>
+              <CardDescription>
+                The project you're looking for could not be found or you don't have permission to view it.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Please return to your dashboard and try again.</p>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={() => navigate('/customer/dashboard')}>
+                Return to Dashboard
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Additional check to ensure project belongs to the customer
+  if (project.customerEmail !== user.email) {
+    console.log("Project doesn't belong to current customer");
+    console.log("Project email:", project.customerEmail);
+    console.log("User email:", user.email);
     return <Navigate to="/customer/dashboard" replace />;
   }
 
