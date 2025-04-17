@@ -93,12 +93,12 @@ export const useAuthCore = () => {
               return false;
             }
           } else if (data?.user) {
-            const role = email === 'admin@cogswellshare.com' ? 'admin' : 'customer';
+            const userRole: UserRole = email === 'admin@cogswellshare.com' ? 'admin' : 'customer';
             const newUser: User = {
               id: data.user.id,
               username: email.split('@')[0],
               email: email,
-              role: role,
+              role: userRole,
               createdAt: new Date().toISOString(),
             };
             

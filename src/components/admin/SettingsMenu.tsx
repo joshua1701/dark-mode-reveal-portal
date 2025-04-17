@@ -92,14 +92,16 @@ const SettingsMenu = () => {
       return;
     }
     
-    const link = addUser({
+    const newUser = addUser({
       username: newUsername,
       email: newEmail,
       role: newRole
     });
     
-    if (link) {
-      setInviteLink(link);
+    if (newUser) {
+      // Generate invite link
+      const inviteLink = `${window.location.origin}/invite?id=${newUser.id}&key=${Math.random().toString(36).substring(2, 15)}`;
+      setInviteLink(inviteLink);
       
       setNewUsername('');
       setNewEmail('');

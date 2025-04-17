@@ -43,7 +43,7 @@ export const useAuthProvider = () => {
     }
   };
 
-  // Wrapper for addUser to ensure correct typing
+  // Wrapper for addUser to match the type in AuthContextType
   const addUser = (userDetails: Omit<User, 'id' | 'createdAt'>) => {
     return addUserToSystem(userDetails.username, userDetails.email, userDetails.role);
   };

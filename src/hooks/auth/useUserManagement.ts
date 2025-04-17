@@ -29,12 +29,11 @@ export const useUserManagement = (currentUser: User | null) => {
     return updatedUser;
   };
 
-  // Fix the implementation to expect username, email, role instead of a User object
-  const addUser = (username: string, email: string, role: UserRole): string => {
+  // Fix the implementation to return a User object instead of an invite link
+  const addUser = (username: string, email: string, role: UserRole): User => {
     const newId = `user-${Math.random().toString(36).substring(2, 9)}`;
     
     const inviteKey = Math.random().toString(36).substring(2, 15);
-    const inviteLink = `${window.location.origin}/invite?id=${newId}&key=${inviteKey}`;
     
     const newUser: User = {
       id: newId,
@@ -54,7 +53,11 @@ export const useUserManagement = (currentUser: User | null) => {
       description: `${username} has been added successfully`,
     });
     
-    return inviteLink;
+    // Generate and store the invite link separately
+    const inviteLink = `${window.location.origin}/invite?id=${newId}&key=${inviteKey}`;
+    localStorage.setItem(`invite_link_${newId}`, inviteLink);
+    
+    return newUser;
   };
 
   return {
