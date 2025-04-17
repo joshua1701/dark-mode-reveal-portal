@@ -22,17 +22,9 @@ export const usePortal = () => {
     showRatingModal, setShowRatingModal,
     rating, setRating,
     handleNavigateHome
-  } = usePortalModals({
-    ...portalCore,
-    setIsRejectModalOpen: (open: boolean) => portalCore.setIsSubmitting(false),
-    setShowRatingModal: (open: boolean) => portalCore.setIsSubmitting(false)
-  });
+  } = usePortalModals(portalCore);
   
-  const { handleStatusChange, handleReject, handleRatingSubmit } = usePortalStatus({
-    ...portalCore,
-    setIsRejectModalOpen,
-    setShowRatingModal
-  });
+  const { handleStatusChange, handleReject, handleRatingSubmit } = usePortalStatus(portalCore);
   
   usePortalNavigation();
   

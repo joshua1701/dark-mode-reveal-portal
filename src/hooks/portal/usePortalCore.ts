@@ -13,6 +13,10 @@ export const usePortalCore = () => {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkErrorDetails, setLinkErrorDetails] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Add the missing state variables
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
 
   const handleLanguageChange = (newLanguage: 'en' | 'de') => {
     setLanguage(newLanguage);
@@ -39,6 +43,11 @@ export const usePortalCore = () => {
     linkErrorDetails,
     setLinkErrorDetails,
     isSubmitting,
-    setIsSubmitting
+    setIsSubmitting,
+    // Add the new properties to the return value
+    isRejectModalOpen,
+    setIsRejectModalOpen,
+    showRatingModal,
+    setShowRatingModal
   };
 };

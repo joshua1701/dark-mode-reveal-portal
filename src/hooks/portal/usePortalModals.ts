@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 export const usePortalModals = (
   portalCore: ReturnType<typeof import('./usePortalCore').usePortalCore>
 ) => {
-  const { project, setIsVerified, language } = portalCore;
+  const { project, setIsVerified, language, isRejectModalOpen, setIsRejectModalOpen, showRatingModal, setShowRatingModal } = portalCore;
   const { verifyMagicLink } = useAuth();
   const navigate = useNavigate();
 
@@ -21,11 +21,9 @@ export const usePortalModals = (
   const [tokenError, setTokenError] = useState('');
 
   // Rejection modal state
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
   // Rating modal state
-  const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(5);
 
   const handlePasswordSubmit = () => {
