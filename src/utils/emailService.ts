@@ -1,4 +1,3 @@
-
 import { Project } from "@/types/project";
 import { toast } from "@/components/ui/use-toast";
 
@@ -19,14 +18,14 @@ export type SMTPConfig = {
 // Default SMTP configuration
 const DEFAULT_SMTP_CONFIG: SMTPConfig = {
   enabled: true,
-  host: "smtp.example.com",
+  host: "w01ead7a.kasserver.com",
   port: 587,
   secure: false,
   auth: {
-    user: "notifications@cogswellshare.com",
-    pass: ""
+    user: "share@cogswell.it",
+    pass: "Cogswell2024#+"
   },
-  fromEmail: "notifications@cogswellshare.com",
+  fromEmail: "share@cogswell.it",
   fromName: "CogswellShare"
 };
 
