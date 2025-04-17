@@ -10,12 +10,10 @@ import PasswordModal from '@/components/portal/PasswordModal';
 import RejectionModal from '@/components/portal/RejectionModal';
 import RatingModal from '@/components/portal/RatingModal';
 import ExpiryNotice from '@/components/portal/ExpiryNotice';
+import { AuditLogEvent } from '@/types/project';
 
-// Get user's IP address (in a real app, this would be handled server-side)
 const getUserIP = async (): Promise<string> => {
   try {
-    // In a production environment, you would use your own backend endpoint
-    // This is just for demonstration purposes
     const response = await fetch('https://api.ipify.org?format=json');
     const data = await response.json();
     return data.ip;
@@ -55,7 +53,6 @@ const Portal = () => {
     const key = params.get('key');
     
     const loadProject = async () => {
-      // If no id or key in the URL, show token input modal
       if (!id || !key) {
         setIsVerifying(false);
         setIsTokenModalOpen(true);
@@ -63,7 +60,6 @@ const Portal = () => {
       }
       
       try {
-        // Get the project from our context (which uses localStorage)
         const localProject = getProjectByIdAndKey(id, key);
         
         if (!localProject) {
@@ -91,7 +87,6 @@ const Portal = () => {
     };
     
     const handleProjectFound = async (foundProject: Project) => {
-      // Check if project is expired
       if (foundProject.expiresAt) {
         const expiryDate = new Date(foundProject.expiresAt);
         if (expiryDate < new Date()) {
@@ -99,14 +94,12 @@ const Portal = () => {
         }
       }
       
-      // Log view in audit log
       try {
         const ipAddress = await getUserIP();
         const userAgent = navigator.userAgent;
         
-        // Add to local audit log via context
         addAuditLog(foundProject.id, {
-          action: 'viewed',
+          action: 'viewed' as AuditLogEvent['action'],
           ipAddress,
           userAgent
         });
@@ -141,7 +134,6 @@ const Portal = () => {
   };
 
   const handleTokenSubmit = async () => {
-    // Format of the token should be "id:key"
     const parts = token.trim().split(':');
     if (parts.length !== 2) {
       setTokenError(language === 'en' ? 
@@ -153,7 +145,6 @@ const Portal = () => {
     const [id, key] = parts;
     
     try {
-      // Try to find the project in the local storage via context
       const project = getProjectByIdAndKey(id, key);
       
       if (!project) {
@@ -163,7 +154,6 @@ const Portal = () => {
         return;
       }
       
-      // Redirect to the project page with the id and key
       navigate(`/portal?id=${id}&key=${key}`);
     } catch (error) {
       console.error('Error verifying token:', error);
@@ -201,7 +191,6 @@ const Portal = () => {
     setIsSubmitting(true);
     
     try {
-      // Update locally via context
       await updateProjectStatus(project.id, 'rejected', rejectionReason);
       
       toast({
@@ -212,7 +201,6 @@ const Portal = () => {
         variant: 'destructive',
       });
       
-      // Force refresh project data
       setProject({
         ...project,
         status: 'rejected',
@@ -237,7 +225,6 @@ const Portal = () => {
     setIsSubmitting(true);
     
     try {
-      // Update locally via context
       await updateProjectRating(project.id, rating);
       await updateProjectStatus(project.id, 'approved');
       
@@ -248,7 +235,6 @@ const Portal = () => {
           'Vielen Dank für Ihre Genehmigung!',
       });
       
-      // Force refresh project data
       setProject({
         ...project,
         status: 'approved',
@@ -271,7 +257,6 @@ const Portal = () => {
     if (!project?.fileData) return;
     
     try {
-      // Use direct download without Supabase
       downloadFile(project.fileData.watermarkedUrl || project.fileData.fileUrl, project.fileData.fileName);
       
       toast({
@@ -281,8 +266,7 @@ const Portal = () => {
           'Ihre Datei wird heruntergeladen',
       });
 
-      // Log download in audit log
-      addAuditLog(project.id, { action: 'viewed' });
+      addAuditLog(project.id, { action: 'viewed' as AuditLogEvent['action'] });
     } catch (error) {
       console.error('Error downloading file:', error);
       toast({
@@ -319,7 +303,6 @@ const Portal = () => {
     );
   }
 
-  // Token input modal
   if (isTokenModalOpen) {
     return (
       <TokenModal

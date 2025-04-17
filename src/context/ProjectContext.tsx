@@ -61,7 +61,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         progress: projectData.progress || 20,
         auditLog: [{
           timestamp: new Date().toISOString(),
-          action: 'created' as const
+          action: 'created' as AuditLogEvent['action']
         }],
         language: projectData.language || 'en',
         brandName: projectData.brandName,
@@ -220,7 +220,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           };
         }
         return project;
-      });
+      }) as Project[];
       
       setProjects(updatedProjects);
       
@@ -393,13 +393,13 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           return {
             ...project,
             auditLog: [...auditLog, { 
-              action: 'reminded',
+              action: 'reminded' as AuditLogEvent['action'],
               timestamp: new Date().toISOString()
             }]
           };
         }
         return project;
-      });
+      }) as Project[];
       
       setProjects(updatedProjects);
       
