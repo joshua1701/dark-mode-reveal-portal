@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Settings, Upload, UserPlus, Users, UserCircle, Mail, ExternalLink } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { UserRole } from '@/types/project';
-import { getSmtpConfig, saveSmtpConfig, SMTPConfig } from '@/utils/emailService';
+import { getSmtpConfig, saveSmtpConfig, type SMTPConfig } from '@/utils/email/emailService';
 import { format } from 'date-fns';
 
 const SettingsMenu = () => {

@@ -5,8 +5,8 @@ import { sendEmail } from "./emailSender";
 import { EMAIL_TEMPLATES } from "./emailTemplates";
 
 // Export SMTP-related types and functions from the smtpConfig file
+export type { SMTPConfig } from "./smtpConfig";
 export { 
-  SMTPConfig, 
   getSmtpConfig, 
   saveSmtpConfig 
 } from "./smtpConfig";

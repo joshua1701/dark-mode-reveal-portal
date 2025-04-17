@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Project, ProjectStatus, AuditLogEvent } from '@/types/project';
@@ -22,7 +21,7 @@ import {
 import { 
   sendProjectNotification, 
   sendReminderEmail as sendReminderEmailUtil 
-} from '@/utils/emailService';
+} from '@/utils/email/emailService';
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
@@ -77,7 +76,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       version: 1
     };
     
-    // Save the project first before attempting to send email
     const updatedProjects = [...projects, newProject];
     setProjects(updatedProjects);
     updateLocalStorage(updatedProjects);
@@ -87,7 +85,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       description: `${newProject.name} has been created successfully`,
     });
     
-    // Try to send email but don't let failures prevent project creation
     try {
       const language = newProject.language || 'en';
       sendProjectNotification(newProject, language).catch(err => {
@@ -228,7 +225,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (error) {
       console.error("Error sending reminder email:", error);
       
-      // Add audit log entry even if email fails
       const updatedProjects = addAuditLogEntry(projects, id, { action: 'reminded' });
       setProjects(updatedProjects);
       updateLocalStorage(updatedProjects);
