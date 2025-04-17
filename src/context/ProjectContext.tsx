@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Project, ProjectStatus, AuditLogEvent } from '@/types/project';
@@ -76,6 +77,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       version: 1
     };
     
+    // Save the project first before attempting to send email
     const updatedProjects = [...projects, newProject];
     setProjects(updatedProjects);
     updateLocalStorage(updatedProjects);
@@ -85,8 +87,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       description: `${newProject.name} has been created successfully`,
     });
     
-    const language = newProject.language || 'en';
-    sendProjectNotification(newProject, language);
+    // Try to send email but don't let failures prevent project creation
+    try {
+      const language = newProject.language || 'en';
+      sendProjectNotification(newProject, language).catch(err => {
+        console.error("Failed to send project notification email:", err);
+        toast({
+          title: 'Email Not Sent',
+          description: 'Project created successfully, but the notification email could not be sent.',
+          variant: 'destructive',
+        });
+      });
+    } catch (error) {
+      console.error("Error in email service:", error);
+    }
     
     console.log(`Magic link for project ${newProject.name}: /portal?id=${newId}&key=${magicKey}`);
     
@@ -200,16 +214,33 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const project = getProject(id);
     if (!project) return false;
     
-    const language = project.language || 'en';
-    const success = await sendReminderEmailUtil(project, language);
-    
-    if (success) {
+    try {
+      const language = project.language || 'en';
+      const success = await sendReminderEmailUtil(project, language);
+      
+      if (success) {
+        const updatedProjects = addAuditLogEntry(projects, id, { action: 'reminded' });
+        setProjects(updatedProjects);
+        updateLocalStorage(updatedProjects);
+      }
+      
+      return success;
+    } catch (error) {
+      console.error("Error sending reminder email:", error);
+      
+      // Add audit log entry even if email fails
       const updatedProjects = addAuditLogEntry(projects, id, { action: 'reminded' });
       setProjects(updatedProjects);
       updateLocalStorage(updatedProjects);
+      
+      toast({
+        title: 'Reminder Attempted',
+        description: 'Reminder function triggered, but email delivery failed.',
+        variant: 'destructive',
+      });
+      
+      return false;
     }
-    
-    return success;
   };
 
   const deleteProject = (id: string) => {

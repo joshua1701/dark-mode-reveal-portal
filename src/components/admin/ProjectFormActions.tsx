@@ -33,7 +33,7 @@ const ProjectFormActions: React.FC<ProjectFormActionsProps> = ({
             Creating...
           </>
         ) : (
-          'Create & Send Approval Link'
+          'Create Project'
         )}
       </Button>
     </div>

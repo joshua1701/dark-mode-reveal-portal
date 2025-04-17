@@ -61,18 +61,34 @@ const CreateProject = () => {
       let fileData;
       
       if (projectType === 'file' && selectedFile) {
-        // Apply watermark to image files
-        const watermarkedUrl = await applyWatermark(selectedFile);
-        
-        fileData = {
-          fileName: selectedFile.name,
-          fileType: selectedFile.type,
-          fileUrl: URL.createObjectURL(selectedFile),
-          watermarkedUrl
-        };
+        try {
+          // Apply watermark to image files
+          const watermarkedUrl = await applyWatermark(selectedFile);
+          
+          fileData = {
+            fileName: selectedFile.name,
+            fileType: selectedFile.type,
+            fileUrl: URL.createObjectURL(selectedFile),
+            watermarkedUrl
+          };
+        } catch (error) {
+          console.error("Error processing file:", error);
+          toast({
+            title: 'File processing error',
+            description: 'There was an error processing your file, but we\'ll create the project anyway.',
+            variant: 'destructive',
+          });
+          
+          // Create basic file data without watermark
+          fileData = {
+            fileName: selectedFile.name,
+            fileType: selectedFile.type,
+            fileUrl: URL.createObjectURL(selectedFile)
+          };
+        }
       }
       
-      addProject({
+      const newProject = addProject({
         name,
         previewUrl: projectType === 'url' ? previewUrl : '',
         fileData,
@@ -83,19 +99,23 @@ const CreateProject = () => {
         progress
       });
       
-      // Simulate email sending
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Show magic link in console for debugging
+      console.log(`Project created: ${name}`);
+      console.log(`Magic link: /portal?id=${newProject.id}&key=${newProject.magicKey}`);
       
       toast({
-        title: 'Project created',
-        description: 'Email with magic link has been sent to the client',
+        title: 'Project created successfully',
+        description: 'The project has been created and saved.',
       });
       
+      // Navigate to dashboard even if email sending fails
       navigate('/admin/dashboard');
+      
     } catch (error) {
+      console.error("Project creation error:", error);
       toast({
         title: 'Error',
-        description: 'Failed to create project',
+        description: 'Failed to create project. Please try again.',
         variant: 'destructive',
       });
     } finally {
