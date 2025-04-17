@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext } from 'react';
-import { useProjectProvider } from '@/hooks/useProjectProvider';
+import { useProjectProvider } from '@/hooks/projects';
 import { ProjectContextType } from './ProjectContextType';
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
