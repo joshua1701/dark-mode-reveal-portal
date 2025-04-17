@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '@/types/project';
 import { supabase, handleSupabaseError, demoUsers } from '@/lib/supabase';
@@ -9,7 +8,6 @@ export const useAuthCore = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
 
-  // Initialize the auth state from localStorage on component mount
   useEffect(() => {
     const savedUser = localStorage.getItem('designer_portal_user');
     if (savedUser) {
@@ -21,12 +19,10 @@ export const useAuthCore = () => {
       }
     }
     
-    // Check for existing Supabase session
     const checkSession = async () => {
       try {
         const { data } = await supabase.auth.getSession();
         if (data?.session?.user) {
-          // If we have a session but no user in localStorage, create one
           const supabaseUser = data.session.user;
           if (!savedUser) {
             const newUser: User = {
@@ -53,15 +49,12 @@ export const useAuthCore = () => {
     checkSession();
   }, []);
 
-  // Offline login function
   const offlineLogin = (email: string, password: string): User | null => {
-    // Find user in demo users
     const demoUser = demoUsers.find(
       u => u.email === email && u.password === password
     );
     
     if (demoUser) {
-      // Create user object
       const newUser: User = {
         id: demoUser.id,
         username: demoUser.username,
@@ -76,18 +69,14 @@ export const useAuthCore = () => {
     return null;
   };
 
-  // Login method to authenticate user
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
-      // Log login attempt
       console.log(`Attempting login for email: ${email}`);
       
-      // Try Supabase first if not already in offline mode
       if (!isOfflineMode) {
         try {
-          // Attempt login with Supabase
           const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password
@@ -99,13 +88,11 @@ export const useAuthCore = () => {
             
             if (shouldUseOffline) {
               setIsOfflineMode(true);
-              // Continue to offline login
             } else {
               setIsLoading(false);
               return false;
             }
           } else if (data?.user) {
-            // Create user object from Supabase user
             const role = email === 'admin@cogswellshare.com' ? 'admin' : 'customer';
             const newUser: User = {
               id: data.user.id,
@@ -115,7 +102,6 @@ export const useAuthCore = () => {
               createdAt: new Date().toISOString(),
             };
             
-            // Update state and localStorage
             setUser(newUser);
             localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
             
@@ -130,7 +116,6 @@ export const useAuthCore = () => {
         } catch (err) {
           console.error('Supabase connection error:', err);
           setIsOfflineMode(true);
-          // Continue to offline login
           toast({
             title: 'Connection Error',
             description: 'Switched to offline mode',
@@ -138,7 +123,6 @@ export const useAuthCore = () => {
         }
       }
       
-      // Offline login fallback
       if (isOfflineMode) {
         const offlineUser = offlineLogin(email, password);
         
@@ -175,22 +159,18 @@ export const useAuthCore = () => {
     }
   };
 
-  // Logout method to sign out user
   const logout = async () => {
     setIsLoading(true);
     
     try {
-      // Sign out from Supabase if not in offline mode
       if (!isOfflineMode) {
         try {
           await supabase.auth.signOut();
         } catch (error) {
           console.error('Supabase logout error:', error);
-          // Continue with local logout
         }
       }
       
-      // Clear user from state and localStorage
       setUser(null);
       localStorage.removeItem('designer_portal_user');
       

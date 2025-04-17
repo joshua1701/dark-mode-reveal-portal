@@ -26,7 +26,7 @@ export const useAuthProvider = () => {
   const { 
     users, 
     updateProfileImage: updateUserProfileImage,
-    addUser 
+    addUser: addUserToSystem
   } = useUserManagement(user);
 
   // Combine the loading states
@@ -41,6 +41,11 @@ export const useAuthProvider = () => {
       setUser(updatedUser);
       localStorage.setItem('designer_portal_user', JSON.stringify(updatedUser));
     }
+  };
+
+  // Wrapper for addUser to ensure correct typing
+  const addUser = (userDetails: Omit<User, 'id' | 'createdAt'>) => {
+    return addUserToSystem(userDetails.username, userDetails.email, userDetails.role);
   };
 
   // Combine all the hooks into a unified API

@@ -92,7 +92,12 @@ const SettingsMenu = () => {
       return;
     }
     
-    const link = addUser(newUsername, newEmail, newRole);
+    const link = addUser({
+      username: newUsername,
+      email: newEmail,
+      role: newRole
+    });
+    
     if (link) {
       setInviteLink(link);
       

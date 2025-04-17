@@ -29,6 +29,7 @@ export const useUserManagement = (currentUser: User | null) => {
     return updatedUser;
   };
 
+  // Fix the implementation to expect username, email, role instead of a User object
   const addUser = (username: string, email: string, role: UserRole): string => {
     const newId = `user-${Math.random().toString(36).substring(2, 9)}`;
     

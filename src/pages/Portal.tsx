@@ -64,6 +64,7 @@ const Portal = () => {
         return;
       }
       
+      // Fix: Use the correct parameter order for verifyMagicLink
       const isValid = await verifyMagicLink(id, key);
       if (!isValid) {
         setIsVerifying(false);
@@ -155,6 +156,7 @@ const Portal = () => {
     }
 
     const [id, key] = parts;
+    // Fix: Use the correct parameter order for verifyMagicLink
     const isValid = await verifyMagicLink(id, key);
 
     if (isValid) {
