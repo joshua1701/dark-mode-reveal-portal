@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Mail, Key } from 'lucide-react';
+import { Loader2, Mail, Key, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/components/ui/use-toast';
 
 type LoginFormProps = {
   onSwitchToRegistration?: () => void;
@@ -21,6 +22,7 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [magicLinkEmail, setMagicLinkEmail] = useState('');
   const [activeTab, setActiveTab] = useState('password');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,22 +31,31 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
     // Add debugging log to verify what's being sent
     console.log('Attempting login with:', email, password);
     
-    // Trim email and password to prevent whitespace issues
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password;
-    
-    // Execute login
-    const success = await login(trimmedEmail, trimmedPassword);
-    console.log('Login result:', success);
-    
-    if (success) {
-      // Redirect based on user role
-      const currentUser = users.find(u => u.email === trimmedEmail);
-      if (currentUser && currentUser.role === 'customer') {
-        navigate('/customer/dashboard');
-      } else {
-        navigate('/admin/dashboard');
+    try {
+      // Trim email and password to prevent whitespace issues
+      const trimmedEmail = email.trim();
+      const trimmedPassword = password;
+      
+      // Execute login
+      const success = await login(trimmedEmail, trimmedPassword);
+      console.log('Login result:', success);
+      
+      if (success) {
+        // Redirect based on user role
+        const currentUser = users.find(u => u.email === trimmedEmail);
+        if (currentUser && currentUser.role === 'customer') {
+          navigate('/customer/dashboard');
+        } else {
+          navigate('/admin/dashboard');
+        }
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login failed",
+        description: "Please check your credentials or try again later.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -52,8 +63,28 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
     e.preventDefault();
     if (isLoading) return;
 
-    const trimmedEmail = magicLinkEmail.trim();
-    await loginWithMagicLink(trimmedEmail);
+    try {
+      const trimmedEmail = magicLinkEmail.trim();
+      const success = await loginWithMagicLink(trimmedEmail);
+      
+      if (success) {
+        toast({
+          title: "Magic link sent",
+          description: "Please check your email for the login link.",
+        });
+      }
+    } catch (error) {
+      console.error('Magic link error:', error);
+      toast({
+        title: "Failed to send magic link",
+        description: "Please check your email or try again later.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -96,13 +127,24 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
                   <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-designer-text-secondary" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     required
-                    className="pl-10 bg-white/5 border-white/10"
+                    className="pl-10 pr-10 bg-white/5 border-white/10"
                   />
+                  <button 
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-designer-text-secondary"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
               

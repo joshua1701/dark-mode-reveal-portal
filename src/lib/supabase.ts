@@ -1,11 +1,52 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { toast } from '@/components/ui/use-toast';
 
 // Initialize the Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-supabase-url.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Add error handling for Supabase requests
+export const handleSupabaseError = (error: any) => {
+  console.error('Supabase Error:', error);
+  
+  // Check for network errors
+  if (error.message === 'Failed to fetch') {
+    toast({
+      title: 'Connection Error',
+      description: 'Could not connect to authentication service. Please check your internet connection.',
+      variant: 'destructive'
+    });
+    return;
+  }
+  
+  // Handle specific error codes
+  switch (error?.code) {
+    case 'auth/invalid-email':
+      toast({
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address.',
+        variant: 'destructive'
+      });
+      break;
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      toast({
+        title: 'Authentication Failed',
+        description: 'Invalid email or password. Please try again.',
+        variant: 'destructive'
+      });
+      break;
+    default:
+      toast({
+        title: 'Authentication Error',
+        description: error.message || 'An error occurred during authentication.',
+        variant: 'destructive'
+      });
+  }
+};
 
 // User types from Supabase
 export type SupabaseUser = {

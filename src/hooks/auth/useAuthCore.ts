@@ -1,188 +1,139 @@
 
 import { useState, useEffect } from 'react';
 import { User } from '@/types/project';
-import { supabase, getUserRole, SupabaseUser } from '@/lib/supabase';
+import { supabase, handleSupabaseError } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
-
-// Map Supabase user to our application User type
-export const mapSupabaseUser = (supabaseUser: SupabaseUser): User => {
-  return {
-    id: supabaseUser.id,
-    username: supabaseUser.user_metadata?.username || supabaseUser.email?.split('@')[0] || 'User',
-    email: supabaseUser.email,
-    role: getUserRole(supabaseUser) as any,
-    createdAt: new Date().toISOString()
-  };
-};
 
 export const useAuthCore = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Check auth status and subscribe to auth changes
+  // Initialize the auth state from localStorage on component mount
   useEffect(() => {
-    const checkAuth = async () => {
+    const savedUser = localStorage.getItem('designer_portal_user');
+    if (savedUser) {
       try {
-        setIsLoading(true);
-
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          const mappedUser = mapSupabaseUser(session.user as SupabaseUser);
-          setUser(mappedUser);
-          console.log('User authenticated:', mappedUser);
-        } else {
-          console.log('No active session');
-          setUser(null);
-        }
-        
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            console.log('Auth state changed:', event);
-            
-            if (session?.user) {
-              const mappedUser = mapSupabaseUser(session.user as SupabaseUser);
-              setUser(mappedUser);
-            } else {
-              setUser(null);
-            }
-          }
-        );
-        
-        return () => {
-          subscription.unsubscribe();
-        };
+        setUser(JSON.parse(savedUser));
       } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Failed to parse saved user:', error);
+        localStorage.removeItem('designer_portal_user');
+      }
+    }
+    
+    // Check for existing Supabase session
+    const checkSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.user) {
+          // If we have a session but no user in localStorage, create one
+          const supabaseUser = data.session.user;
+          if (!savedUser) {
+            const newUser: User = {
+              id: supabaseUser.id,
+              username: supabaseUser.email?.split('@')[0] || 'User',
+              email: supabaseUser.email || '',
+              role: supabaseUser.email === 'admin@cogswellshare.com' ? 'admin' : 'customer',
+              createdAt: new Date().toISOString(),
+            };
+            setUser(newUser);
+            localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+          }
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
       }
     };
-
-    checkAuth();
+    
+    checkSession();
   }, []);
 
+  // Login method to authenticate user
   const login = async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
-      console.log('Login attempt with email:', email);
+      // Log login attempt
+      console.log(`Attempting login for email: ${email}`);
       
-      if (email === 'admin@cogswellshare.com' && password === 'DemoAdmin123!') {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (error) {
-          console.error('Supabase login error:', error);
-          
-          if (error.message.includes('Invalid login credentials')) {
-            toast({
-              title: 'Demo mode',
-              description: 'In a real app, please create this user in Supabase first',
-            });
-            const mockUser: User = {
-              id: 'admin-demo-id',
-              username: 'Admin',
-              email: 'admin@cogswellshare.com',
-              role: 'admin',
-              createdAt: new Date().toISOString()
-            };
-            setUser(mockUser);
-            return true;
-          }
-          
-          toast({
-            title: 'Login failed',
-            description: error.message,
-            variant: 'destructive',
-          });
-          return false;
-        }
-        
-        if (data.user) {
-          const mappedUser = mapSupabaseUser(data.user as SupabaseUser);
-          setUser(mappedUser);
-          
-          toast({
-            title: 'Login successful',
-            description: 'Welcome to CogswellShare!',
-          });
-          return true;
-        }
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        
-        if (error) {
-          console.error('Login error:', error);
-          
-          toast({
-            title: 'Login failed',
-            description: error.message,
-            variant: 'destructive',
-          });
-          return false;
-        }
-        
-        if (data.user) {
-          const mappedUser = mapSupabaseUser(data.user as SupabaseUser);
-          setUser(mappedUser);
-          
-          toast({
-            title: 'Login successful',
-            description: 'Welcome to CogswellShare!',
-          });
-          return true;
-        }
+      // Attempt login with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error('Login error:', error);
+        handleSupabaseError(error);
+        setIsLoading(false);
+        return false;
       }
       
-      toast({
-        title: 'Login failed',
-        description: 'Invalid email or password',
-        variant: 'destructive',
-      });
-      return false;
+      if (data?.user) {
+        // Create user object from Supabase user
+        const role = email === 'admin@cogswellshare.com' ? 'admin' : 'customer';
+        const newUser: User = {
+          id: data.user.id,
+          username: email.split('@')[0],
+          email: email,
+          role: role,
+          createdAt: new Date().toISOString(),
+        };
+        
+        // Update state and localStorage
+        setUser(newUser);
+        localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+        
+        toast({
+          title: 'Login Successful',
+          description: `Welcome back, ${newUser.username}!`,
+        });
+        
+        setIsLoading(false);
+        return true;
+      }
       
+      setIsLoading(false);
+      return false;
+    } catch (error: any) {
+      console.error('Login exception:', error);
+      handleSupabaseError(error);
+      setIsLoading(false);
+      return false;
+    }
+  };
+
+  // Logout method to sign out user
+  const logout = async () => {
+    setIsLoading(true);
+    
+    try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // Clear user from state and localStorage
+      setUser(null);
+      localStorage.removeItem('designer_portal_user');
+      
+      toast({
+        title: 'Logged Out',
+        description: 'You have been successfully logged out.',
+      });
     } catch (error) {
-      console.error('Login error:', error);
-      
+      console.error('Logout error:', error);
       toast({
-        title: 'Login error',
-        description: 'An error occurred during login',
-        variant: 'destructive',
+        title: 'Logout Error',
+        description: 'There was an error during logout.',
+        variant: 'destructive'
       });
-      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      
-      toast({
-        title: 'Logged out',
-        description: 'You have been logged out successfully',
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-      toast({
-        title: 'Logout error',
-        description: 'An error occurred during logout',
-        variant: 'destructive',
-      });
-    }
-  };
-
   return {
     user,
-    isLoading,
     setUser,
+    isLoading,
     login,
     logout
   };

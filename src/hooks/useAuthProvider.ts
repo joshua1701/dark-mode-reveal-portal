@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { User } from '@/types/project';
 import { useAuthCore } from './auth/useAuthCore';
 import { useMagicLink } from './auth/useMagicLink';
