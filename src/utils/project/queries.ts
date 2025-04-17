@@ -3,12 +3,28 @@ import { Project } from '../../types/project';
 
 // Get a project by ID
 export const getProjectById = (projects: Project[], id: string): Project | undefined => {
+  if (!projects || projects.length === 0) {
+    console.error('No projects available for lookup');
+    return undefined;
+  }
+  console.log(`Looking for project with ID: ${id} among ${projects.length} projects`);
   return projects.find(project => project.id === id);
 };
 
 // Get a project by ID and key
 export const getProjectByIdAndKey = (projects: Project[], id: string, key: string): Project | undefined => {
-  return projects.find(project => project.id === id && project.magicKey === key);
+  if (!projects || projects.length === 0) {
+    console.error('No projects available for lookup');
+    return undefined;
+  }
+  
+  console.log(`Looking for project with ID: ${id} and key: ${key} among ${projects.length} projects`);
+  
+  // Case-insensitive matching for more reliable verification
+  return projects.find(project => 
+    project.id.toLowerCase() === id.toLowerCase() && 
+    project.magicKey.toLowerCase() === key.toLowerCase()
+  );
 };
 
 // Get projects for a specific customer
