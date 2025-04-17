@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { ProjectContextType } from './ProjectContextType';
@@ -60,7 +61,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         progress: projectData.progress || 20,
         auditLog: [{
           timestamp: new Date().toISOString(),
-          action: 'created'
+          action: 'created' as const
         }],
         language: projectData.language || 'en',
         brandName: projectData.brandName,
@@ -106,14 +107,17 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Update the project in local state and localStorage
       const updatedProjects = projects.map(project => {
         if (project.id === id) {
+          const action: AuditLogEvent['action'] = 
+            status === 'approved' ? 'approved' : 
+            status === 'rejected' ? 'rejected' : 'commented';
+            
           const updatedAuditLog = [
             ...(project.auditLog || []),
             {
               timestamp: new Date().toISOString(),
-              action: status === 'approved' ? 'approved' : 
-                     status === 'rejected' ? 'rejected' : 'commented'
-            }
-          ] as AuditLogEvent[];
+              action
+            } as AuditLogEvent
+          ];
           
           return { 
             ...project, 
@@ -195,6 +199,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addAuditLog = async (id: string, event: Omit<AuditLogEvent, 'timestamp'>) => {
     try {
+      // Make sure the action is one of the allowed values
+      const validAction: AuditLogEvent['action'] = event.action;
+      
       // Update local state
       const timestamp = new Date().toISOString();
       const updatedProjects = projects.map(project => {
@@ -202,7 +209,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const auditLog = project.auditLog || [];
           const newAuditLogEntry: AuditLogEvent = { 
             ...event, 
-            timestamp 
+            timestamp,
+            action: validAction
           };
           
           return {
