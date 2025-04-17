@@ -1,14 +1,15 @@
 
-import { User, UserRole } from '@/types/project';
+import { User } from './project';
 
 export interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
   users: User[];
+  isLoading: boolean;
+  isOfflineMode: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loginWithMagicLink: (email: string) => Promise<boolean>;
-  verifyMagicLink: (id: string, key: string) => Promise<boolean>;
+  verifyMagicLink: (token: string) => Promise<boolean>;
   updateProfileImage: (imageUrl: string) => void;
-  addUser: (username: string, email: string, role: UserRole) => string;
+  addUser: (user: Omit<User, 'id' | 'createdAt'>) => User;
 }

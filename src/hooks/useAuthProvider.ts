@@ -9,6 +9,7 @@ export const useAuthProvider = () => {
   const { 
     user, 
     isLoading: authLoading, 
+    isOfflineMode,
     setUser,
     login, 
     logout 
@@ -47,6 +48,7 @@ export const useAuthProvider = () => {
     user,
     users,
     isLoading,
+    isOfflineMode,
     login,
     logout,
     loginWithMagicLink,
