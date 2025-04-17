@@ -13,6 +13,7 @@ export const useAuthOperations = (
   setIsLoading: (loading: boolean) => void
 ) => {
   const { handleOfflineLogin } = useOfflineAuth();
+  const [loginAttempts, setLoginAttempts] = useState(0);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -20,7 +21,8 @@ export const useAuthOperations = (
     try {
       console.log(`Attempting login for email: ${email}`);
       
-      if (!isOfflineMode) {
+      // Try online mode first unless we're already in offline mode
+      if (!isOfflineMode && loginAttempts < 2) {
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
             email,
@@ -29,15 +31,25 @@ export const useAuthOperations = (
           
           if (error) {
             console.error('Login error:', error);
+            setLoginAttempts(prev => prev + 1);
+            
             const shouldUseOffline = handleSupabaseError(error);
             
-            if (shouldUseOffline) {
+            if (shouldUseOffline || loginAttempts >= 1) {
+              console.log('Switching to offline mode after failed attempt');
               setIsOfflineMode(true);
+              toast({
+                title: 'Connection Issue',
+                description: 'Switched to offline mode for demo access',
+              });
             } else {
               setIsLoading(false);
               return false;
             }
           } else if (data?.user) {
+            // Online login successful - reset attempts counter
+            setLoginAttempts(0);
+            
             // Fetch user profile from profiles table
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
@@ -60,6 +72,9 @@ export const useAuthOperations = (
               
               setUser(newUser);
               localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+              
+              setIsLoading(false);
+              return true;
             } else {
               // Use profile data for the user
               const newUser: User = {
@@ -73,27 +88,23 @@ export const useAuthOperations = (
               
               setUser(newUser);
               localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+              
+              setIsLoading(false);
+              return true;
             }
-            
-            toast({
-              title: 'Login Successful',
-              description: `Welcome back, ${profileData?.username || email.split('@')[0]}!`,
-            });
-            
-            setIsLoading(false);
-            return true;
           }
         } catch (err) {
           console.error('Supabase connection error:', err);
           setIsOfflineMode(true);
           toast({
             title: 'Connection Error',
-            description: 'Switched to offline mode',
+            description: 'Switched to offline mode for demo access',
           });
         }
       }
       
-      if (isOfflineMode) {
+      // Fallback to offline mode if online login failed or we're already in offline mode
+      if (isOfflineMode || loginAttempts >= 1) {
         const offlineUser = handleOfflineLogin(email, password);
         
         if (offlineUser) {
@@ -111,6 +122,7 @@ export const useAuthOperations = (
     } catch (error: any) {
       console.error('Login exception:', error);
       handleSupabaseError(error);
+      setIsOfflineMode(true); // Fallback to offline mode on exceptions
       setIsLoading(false);
       return false;
     }

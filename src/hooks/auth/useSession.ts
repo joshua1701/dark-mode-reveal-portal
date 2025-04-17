@@ -5,25 +5,32 @@ import { supabase } from '@/lib/supabase';
 
 export const useSession = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   useEffect(() => {
+    // First check localStorage for a saved user
     const savedUser = localStorage.getItem('designer_portal_user');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        setIsLoading(false);
       } catch (error) {
         console.error('Failed to parse saved user:', error);
         localStorage.removeItem('designer_portal_user');
       }
     }
     
+    // Then try to check online session with Supabase
     const checkSession = async () => {
       try {
         const { data } = await supabase.auth.getSession();
+        
         if (data?.session?.user) {
           const supabaseUser = data.session.user;
+          
+          // Only update if we don't already have a user from localStorage
           if (!savedUser) {
             // Fetch profile from Supabase
             const { data: profileData, error: profileError } = await supabase
@@ -59,13 +66,19 @@ export const useSession = () => {
             }
           }
         }
+        
+        setIsLoading(false);
       } catch (error) {
         console.error('Error checking session:', error);
         setIsOfflineMode(true);
+        setIsLoading(false);
       }
     };
     
-    checkSession();
+    // Only check the online session if we don't have a saved user
+    if (!savedUser) {
+      checkSession();
+    }
   }, []);
 
   return {
