@@ -39,26 +39,21 @@ export const useAuthProvider = () => {
     try {
       setIsLoading(true);
 
-      // Added logging to debug login attempts
+      // Log login attempts for debugging
       console.log('Login attempt with:', email);
       
+      // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Simplify the login check logic to fix authentication issues
-      // Define the valid login credentials explicitly
-      const validCredentials = [
-        { email: 'admin@cogswell.de', password: 'password' },
-        { email: 'joshua@cogswell.de', password: 'Cogswell1234#+' },
-        { email: 'credits@cogswell.de', password: 'password' },
-        { email: 'customer@example.com', password: 'password' }
-      ];
-      
-      // Check if credentials match any valid combination
-      const isValidLogin = validCredentials.some(
-        cred => cred.email === email && cred.password === password
+      // Define login credentials without validation logic to ensure it works
+      const loginSuccessful = (
+        (email === 'admin@cogswell.de' && password === 'password') ||
+        (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+') ||
+        (email === 'credits@cogswell.de' && password === 'password') ||
+        (email === 'customer@example.com' && password === 'password')
       );
       
-      if (isValidLogin) {
+      if (loginSuccessful) {
         // Find the correct user to log in
         const userToLogin = users.find(u => u.email === email);
         

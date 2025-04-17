@@ -92,10 +92,13 @@ const Login = () => {
         }
       }
     } else {
+      // Add debugging log to verify what's being sent
       console.log('Attempting login with:', email, password);
+      
+      // Execute login
       const success = await login(email, password);
       if (success) {
-        // Get the current user to determine their role
+        // Redirect based on user role
         const currentUser = users.find(u => u.email === email);
         if (currentUser && currentUser.role === 'customer') {
           navigate('/customer/dashboard');
