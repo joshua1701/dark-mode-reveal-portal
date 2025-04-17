@@ -1,6 +1,5 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
-import { usePortal } from '@/hooks/usePortal';
+import { usePortal } from '@/hooks/portal';
 import TokenModal from '@/components/portal/TokenModal';
 import PortalLayout from '@/components/portal/PortalLayout';
 import ProjectNotFound from '@/components/portal/ProjectNotFound';
