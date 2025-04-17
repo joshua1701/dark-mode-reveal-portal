@@ -50,6 +50,7 @@ const Portal = () => {
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
   const [token, setToken] = useState('');
   const [tokenError, setTokenError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -192,32 +193,73 @@ const Portal = () => {
   };
   
   const handleReject = () => {
-    if (!project) return;
+    if (!project || isSubmitting) return;
     
-    updateProjectStatus(project.id, 'rejected', rejectionReason);
-    setIsRejectModalOpen(false);
-    toast({
-      title: language === 'en' ? 'Project Rejected' : 'Projekt abgelehnt',
-      description: language === 'en' ? 
-        'Feedback has been submitted' : 
-        'Feedback wurde übermittelt',
-      variant: 'destructive',
-    });
+    setIsSubmitting(true);
+    
+    try {
+      updateProjectStatus(project.id, 'rejected', rejectionReason);
+      
+      toast({
+        title: language === 'en' ? 'Project Rejected' : 'Projekt abgelehnt',
+        description: language === 'en' ? 
+          'Feedback has been submitted' : 
+          'Feedback wurde übermittelt',
+        variant: 'destructive',
+      });
+      
+      // Force refresh project data
+      setProject({
+        ...project,
+        status: 'rejected',
+        comments: rejectionReason
+      });
+    } catch (error) {
+      console.error('Error rejecting project:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update project status',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+      setIsRejectModalOpen(false);
+    }
   };
   
   const handleRatingSubmit = () => {
-    if (!project) return;
+    if (!project || isSubmitting) return;
     
-    updateProjectRating(project.id, rating);
-    updateProjectStatus(project.id, 'approved');
-    setShowRatingModal(false);
+    setIsSubmitting(true);
     
-    toast({
-      title: language === 'en' ? 'Project Approved' : 'Projekt genehmigt',
-      description: language === 'en' ? 
-        'Thank you for your approval!' : 
-        'Vielen Dank für Ihre Genehmigung!',
-    });
+    try {
+      updateProjectRating(project.id, rating);
+      updateProjectStatus(project.id, 'approved');
+      
+      toast({
+        title: language === 'en' ? 'Project Approved' : 'Projekt genehmigt',
+        description: language === 'en' ? 
+          'Thank you for your approval!' : 
+          'Vielen Dank für Ihre Genehmigung!',
+      });
+      
+      // Force refresh project data
+      setProject({
+        ...project,
+        status: 'approved',
+        customerRating: rating
+      });
+    } catch (error) {
+      console.error('Error approving project:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update project status',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+      setShowRatingModal(false);
+    }
   };
   
   const handleDownload = () => {
@@ -296,6 +338,7 @@ const Portal = () => {
         setRejectionReason={setRejectionReason}
         onSubmit={handleReject}
         language={language}
+        isSubmitting={isSubmitting}
       />
       
       <RatingModal
@@ -305,6 +348,7 @@ const Portal = () => {
         setRating={setRating}
         onSubmit={handleRatingSubmit}
         language={language}
+        isSubmitting={isSubmitting}
       />
       
       {isExpired && (

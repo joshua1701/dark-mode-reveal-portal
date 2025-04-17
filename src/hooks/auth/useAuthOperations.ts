@@ -42,7 +42,28 @@ export const useAuthOperations = (
                 title: 'Connection Issue',
                 description: 'Switched to offline mode for demo access',
               });
+              
+              // Try offline login since online failed
+              const offlineUser = handleOfflineLogin(email, password);
+              if (offlineUser) {
+                setUser(offlineUser);
+                setIsLoading(false);
+                return true;
+              } else {
+                toast({
+                  title: 'Login Failed',
+                  description: 'Invalid email or password',
+                  variant: 'destructive'
+                });
+                setIsLoading(false);
+                return false;
+              }
             } else {
+              toast({
+                title: 'Login Failed',
+                description: error.message,
+                variant: 'destructive'
+              });
               setIsLoading(false);
               return false;
             }
@@ -100,6 +121,14 @@ export const useAuthOperations = (
             title: 'Connection Error',
             description: 'Switched to offline mode for demo access',
           });
+          
+          // Try offline login since online failed
+          const offlineUser = handleOfflineLogin(email, password);
+          if (offlineUser) {
+            setUser(offlineUser);
+            setIsLoading(false);
+            return true;
+          }
         }
       }
       
@@ -112,6 +141,11 @@ export const useAuthOperations = (
           setIsLoading(false);
           return true;
         } else {
+          toast({
+            title: 'Login Failed',
+            description: 'Invalid email or password',
+            variant: 'destructive'
+          });
           setIsLoading(false);
           return false;
         }
@@ -123,6 +157,21 @@ export const useAuthOperations = (
       console.error('Login exception:', error);
       handleSupabaseError(error);
       setIsOfflineMode(true); // Fallback to offline mode on exceptions
+      
+      // Try offline login as last resort
+      const offlineUser = handleOfflineLogin(email, password);
+      if (offlineUser) {
+        setUser(offlineUser);
+        setIsLoading(false);
+        return true;
+      }
+      
+      toast({
+        title: 'Login Error',
+        description: error.message || 'An unexpected error occurred',
+        variant: 'destructive'
+      });
+      
       setIsLoading(false);
       return false;
     }

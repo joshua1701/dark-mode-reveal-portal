@@ -8,7 +8,7 @@ import LoginForm from '@/components/auth/LoginForm';
 import RegistrationForm from '@/components/auth/RegistrationForm';
 
 const Login = () => {
-  const { users, user } = useAuth();
+  const { users, user, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -16,16 +16,24 @@ const Login = () => {
   const [isRegistration, setIsRegistration] = useState(false);
   const [inviteId, setInviteId] = useState<string | null>(null);
   const [invitedUser, setInvitedUser] = useState<any>(null);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     // Check if user is already logged in
-    if (user) {
-      // Redirect based on role
-      if (user.role === 'admin') {
-        navigate('/admin/dashboard', { replace: true });
-      } else if (user.role === 'customer') {
-        navigate('/customer/dashboard', { replace: true });
-      }
+    if (user && !isLoading && !redirecting) {
+      setRedirecting(true);
+      
+      console.log('User logged in, redirecting to dashboard. User role:', user.role);
+      
+      // Add a slight delay to ensure state updates before redirect
+      setTimeout(() => {
+        // Redirect based on role
+        if (user.role === 'admin') {
+          navigate('/admin/dashboard', { replace: true });
+        } else if (user.role === 'customer') {
+          navigate('/customer/dashboard', { replace: true });
+        }
+      }, 100);
     }
     
     // Check for invitation parameter
@@ -49,7 +57,18 @@ const Login = () => {
         });
       }
     }
-  }, [location, user, users, navigate]);
+  }, [location, user, users, navigate, isLoading]);
+
+  if (isLoading || (user && redirecting)) {
+    return (
+      <LoginLayout>
+        <div className="flex flex-col items-center justify-center h-48">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
+          <p>Authenticating...</p>
+        </div>
+      </LoginLayout>
+    );
+  }
 
   return (
     <LoginLayout>
