@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProjects, Project, ProjectStatus } from '@/context/ProjectContext';
@@ -47,7 +48,7 @@ const getUserIP = async (): Promise<string> => {
 };
 
 const Portal = () => {
-  const { getProjectByIdAndKey, updateProjectStatus, updateProjectRating, addAuditLog } = useProjects();
+  const { projects, getProjectByIdAndKey, updateProjectStatus, updateProjectRating, addAuditLog } = useProjects();
   const { verifyMagicLink, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -85,18 +86,30 @@ const Portal = () => {
       
       const isValid = await verifyMagicLink(id, key);
       if (!isValid) {
-        navigate('/');
+        setIsVerifying(false);
+        toast({
+          title: 'Invalid Link',
+          description: 'This approval link is invalid or expired',
+          variant: 'destructive',
+        });
         return;
       }
       
       const foundProject = getProjectByIdAndKey(id, key);
+      
+      // Debug logging to see what's happening
+      console.log("Available projects:", projects);
+      console.log("Looking for project with id:", id);
+      console.log("Looking for project with key:", key);
+      console.log("Found project:", foundProject);
+      
       if (!foundProject) {
+        setIsVerifying(false);
         toast({
           title: 'Project Not Found',
           description: 'The requested project could not be found',
           variant: 'destructive',
         });
-        navigate('/');
         return;
       }
       
@@ -135,7 +148,7 @@ const Portal = () => {
     };
     
     loadProject();
-  }, [location.search, getProjectByIdAndKey, verifyMagicLink, navigate, addAuditLog]);
+  }, [location.search, getProjectByIdAndKey, verifyMagicLink, navigate, addAuditLog, projects]);
   
   const handlePasswordSubmit = () => {
     if (!project) return;
@@ -258,6 +271,11 @@ const Portal = () => {
         >
           {t.returnHome}
         </button>
+        <div className="mt-8 text-center">
+          <a href="https://cogswell.de" target="_blank" rel="noopener noreferrer" className="text-designer-text-secondary underline hover:text-white">
+            Need help? Visit cogswell.de
+          </a>
+        </div>
       </div>
     );
   }
@@ -311,6 +329,7 @@ const Portal = () => {
             handleCopyLink={handleCopyLink}
             language={language}
             isExpired={isExpired}
+            onDownload={handleDownload}
           />
           
           <div className="flex-1 flex flex-col">
