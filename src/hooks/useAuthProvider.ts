@@ -42,9 +42,10 @@ export const useAuthProvider = () => {
 
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mock authentication for both admin users
+      // Mock authentication for admin users
       if ((email === 'admin@cogswell.de' && password === 'password') ||
-          (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+')) {
+          (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+') ||
+          (email === 'credits@cogswell.de' && password === 'password')) {
         // Find the correct user to log in
         const userToLogin = users.find(u => u.email === email);
         
@@ -55,6 +56,23 @@ export const useAuthProvider = () => {
           toast({
             title: 'Login successful',
             description: 'Welcome back to CogswellShare!',
+          });
+
+          return true;
+        }
+      }
+      
+      // Mock authentication for customer users
+      if (email === 'customer@example.com' && password === 'password') {
+        const customerUser = users.find(u => u.email === email);
+        
+        if (customerUser) {
+          setUser(customerUser);
+          localStorage.setItem('designer_portal_user', JSON.stringify(customerUser));
+          
+          toast({
+            title: 'Login successful',
+            description: 'Welcome to CogswellShare!',
           });
 
           return true;

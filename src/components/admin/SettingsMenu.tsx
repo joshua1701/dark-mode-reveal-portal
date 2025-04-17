@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -31,13 +30,11 @@ const SettingsMenu = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(user?.profileImage || null);
   
-  // Add user form state
   const [newUsername, setNewUsername] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('admin');
   const [inviteLink, setInviteLink] = useState('');
   
-  // SMTP configuration state
   const [smtpConfig, setSmtpConfig] = useState<SMTPConfig>({
     enabled: true,
     host: "smtp.example.com",
@@ -51,7 +48,13 @@ const SettingsMenu = () => {
     fromName: "CogswellShare"
   });
 
-  // Load SMTP config on component mount
+  const [creditsInfo, setCreditsInfo] = useState({
+    available: 250,
+    used: 75,
+    total: 1000,
+    expiryDate: new Date(new Date().setMonth(new Date().getMonth() + 6))
+  });
+
   useEffect(() => {
     const config = getSmtpConfig();
     setSmtpConfig(config);
@@ -62,7 +65,6 @@ const SettingsMenu = () => {
       const file = e.target.files[0];
       setImageFile(file);
       
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
@@ -93,7 +95,6 @@ const SettingsMenu = () => {
     if (link) {
       setInviteLink(link);
       
-      // Reset form
       setNewUsername('');
       setNewEmail('');
     }
@@ -130,13 +131,20 @@ const SettingsMenu = () => {
       description: 'Sending a test email...',
     });
     
-    // Simulate test email
     setTimeout(() => {
       toast({
         title: 'Test email sent',
         description: 'SMTP connection successful',
       });
     }, 1500);
+  };
+
+  const handleBuyCredits = () => {
+    toast({
+      title: 'Purchase Credits',
+      description: 'Redirecting to payment page...',
+    });
+    // In a real app, this would redirect to a payment page or open a payment modal
   };
 
   const getInitials = (name: string) => {
@@ -147,7 +155,6 @@ const SettingsMenu = () => {
       .toUpperCase();
   };
 
-  // Safely handle users array
   const usersList = users || [];
 
   return (
@@ -171,14 +178,14 @@ const SettingsMenu = () => {
         </DialogHeader>
         
         <Tabs defaultValue="profile" className="mt-4">
-          <TabsList className="grid grid-cols-4 bg-white/5">
+          <TabsList className="grid grid-cols-5 bg-white/5">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="email">Email</TabsTrigger>
+            <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
           </TabsList>
           
-          {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-4 py-4">
             <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
               <div className="flex flex-col items-center">
@@ -243,7 +250,6 @@ const SettingsMenu = () => {
             </div>
           </TabsContent>
           
-          {/* Users Tab */}
           <TabsContent value="users" className="space-y-6 py-4">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -355,7 +361,6 @@ const SettingsMenu = () => {
             </div>
           </TabsContent>
           
-          {/* Email Tab */}
           <TabsContent value="email" className="py-4">
             <div className="space-y-4">
               <h3 className="text-lg font-medium flex items-center gap-2">
@@ -494,7 +499,72 @@ const SettingsMenu = () => {
             </div>
           </TabsContent>
           
-          {/* Preferences Tab */}
+          <TabsContent value="credits" className="py-4">
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium">Account Credits</h3>
+              
+              <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-black/20 rounded-lg">
+                    <h4 className="text-sm font-medium text-designer-text-secondary mb-1">Available Credits</h4>
+                    <p className="text-3xl font-bold text-designer-badge">{creditsInfo.available}</p>
+                  </div>
+                  
+                  <div className="text-center p-4 bg-black/20 rounded-lg">
+                    <h4 className="text-sm font-medium text-designer-text-secondary mb-1">Used Credits</h4>
+                    <p className="text-3xl font-bold">{creditsInfo.used}</p>
+                  </div>
+                  
+                  <div className="text-center p-4 bg-black/20 rounded-lg">
+                    <h4 className="text-sm font-medium text-designer-text-secondary mb-1">Total Credits</h4>
+                    <p className="text-3xl font-bold">{creditsInfo.total}</p>
+                  </div>
+                </div>
+                
+                <div className="mt-6">
+                  <div className="w-full bg-white/10 rounded-full h-2.5">
+                    <div 
+                      className="bg-designer-badge h-2.5 rounded-full" 
+                      style={{ width: `${(creditsInfo.used / creditsInfo.total) * 100}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-designer-text-secondary mt-2">
+                    Credits expire on {format(creditsInfo.expiryDate, 'MMMM d, yyyy')}
+                  </p>
+                </div>
+                
+                <div className="flex justify-end mt-6">
+                  <Button onClick={handleBuyCredits}>
+                    Buy More Credits
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <h4 className="font-medium">Credit Usage History</h4>
+                
+                <div className="divide-y divide-white/10">
+                  {[
+                    { date: '2025-04-15', description: 'Project Creation', amount: -10 },
+                    { date: '2025-04-10', description: 'Credit Purchase', amount: 100 },
+                    { date: '2025-04-05', description: 'Project Creation', amount: -10 },
+                    { date: '2025-04-01', description: 'Project Creation', amount: -10 }
+                  ].map((item, index) => (
+                    <div key={index} className="py-3 flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{item.description}</p>
+                        <p className="text-sm text-designer-text-secondary">{format(new Date(item.date), 'MMM d, yyyy')}</p>
+                      </div>
+                      <span className={`font-medium ${item.amount > 0 ? 'text-green-400' : 'text-designer-text-secondary'}`}>
+                        {item.amount > 0 ? `+${item.amount}` : item.amount}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+          
           <TabsContent value="preferences" className="py-4">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Interface Preferences</h3>

@@ -171,3 +171,34 @@ export const deleteProject = (
 ): Project[] => {
   return projects.filter(project => project.id !== id);
 };
+
+// Get projects for a specific customer
+export const getProjectsForCustomer = (
+  projects: Project[],
+  customerEmail: string
+): Project[] => {
+  return projects.filter(project => 
+    project.customerEmail === customerEmail && !project.archived
+  );
+};
+
+// Filter projects by status
+export const filterProjectsByStatus = (
+  projects: Project[],
+  status: ProjectStatus | 'all'
+): Project[] => {
+  if (status === 'all') return projects;
+  return projects.filter(project => project.status === status);
+};
+
+// Search projects by name or brand
+export const searchProjects = (
+  projects: Project[],
+  searchTerm: string
+): Project[] => {
+  const term = searchTerm.toLowerCase();
+  return projects.filter(project => 
+    project.name.toLowerCase().includes(term) || 
+    (project.brandName && project.brandName.toLowerCase().includes(term))
+  );
+};

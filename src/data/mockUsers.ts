@@ -18,10 +18,20 @@ export const joshuaUser: User = {
   createdAt: new Date().toISOString()
 };
 
+// New admin user with credits
+export const creditsAdmin: User = {
+  id: 'admin-3',
+  username: 'Credits Admin',
+  email: 'credits@cogswell.de',
+  role: 'admin',
+  createdAt: new Date().toISOString()
+};
+
 // Default users array
 export const defaultUsers: User[] = [
   mockUser,
   joshuaUser,
+  creditsAdmin,
   {
     id: 'customer-1',
     username: 'Customer User',

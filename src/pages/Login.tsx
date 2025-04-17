@@ -26,7 +26,12 @@ const Login = () => {
   useEffect(() => {
     // Check if user is already logged in
     if (user) {
-      navigate('/admin/dashboard');
+      // Redirect based on role
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (user.role === 'customer') {
+        navigate('/customer/dashboard');
+      }
     }
     
     // Check for invitation parameter
@@ -79,12 +84,23 @@ const Login = () => {
       // For this demo, we'll just log them in
       const success = await login(username, newPassword);
       if (success) {
-        navigate('/admin/dashboard');
+        // Redirect based on role
+        if (invitedUser && invitedUser.role === 'customer') {
+          navigate('/customer/dashboard');
+        } else {
+          navigate('/admin/dashboard');
+        }
       }
     } else {
       const success = await login(username, password);
       if (success) {
-        navigate('/admin/dashboard');
+        // Get the current user to determine their role
+        const currentUser = users.find(u => u.email === username);
+        if (currentUser && currentUser.role === 'customer') {
+          navigate('/customer/dashboard');
+        } else {
+          navigate('/admin/dashboard');
+        }
       }
     }
   };

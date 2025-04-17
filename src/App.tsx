@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,24 +10,37 @@ import { ProjectProvider } from "@/context/ProjectContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import CreateProject from "./pages/admin/CreateProject";
+import CustomerDashboard from "./pages/customer/Dashboard";
 import Portal from "./pages/Portal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 // Protected route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = ({ children, allowedRoles = ['admin', 'customer'] }: { 
+  children: React.ReactNode, 
+  allowedRoles?: string[] 
+}) => {
   const { user, isLoading } = useAuth();
   
   if (isLoading) {
     return null;
   }
   
-  if (!user) {
+  if (!user || !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
   
   return <>{children}</>;
+};
+
+// Admin only protected route
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <ProtectedRoute allowedRoles={['admin']}>
+      {children}
+    </ProtectedRoute>
+  );
 };
 
 // Document title
@@ -47,16 +61,26 @@ const App = () => (
               <Route 
                 path="/admin/dashboard" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <Dashboard />
-                  </ProtectedRoute>
+                  </AdminRoute>
                 } 
               />
               <Route 
                 path="/admin/create-project" 
                 element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <CreateProject />
+                  </AdminRoute>
+                } 
+              />
+              
+              {/* Customer Routes */}
+              <Route 
+                path="/customer/dashboard" 
+                element={
+                  <ProtectedRoute allowedRoles={['customer']}>
+                    <CustomerDashboard />
                   </ProtectedRoute>
                 } 
               />
