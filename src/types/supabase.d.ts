@@ -25,7 +25,7 @@ export type ProjectTable = {
 export type AuditLogTable = {
   id: string;
   project_id: string;
-  action: string;
+  action: "approved" | "rejected" | "created" | "viewed" | "commented" | "reminded";
   timestamp: string;
   ip_address: string | null;
   user_agent: string | null;

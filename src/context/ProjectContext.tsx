@@ -1,7 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { ProjectContextType } from './ProjectContextType';
 import { Project, ProjectStatus, AuditLogEvent } from '@/types/project';
 
@@ -17,32 +15,12 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       try {
         setLoading(true);
         
-        // First check if we have a session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          // User is authenticated, fetch projects
-          try {
-            // Since we don't have proper tables defined yet in the database,
-            // we'll retrieve projects from localStorage for now
-            const savedProjects = localStorage.getItem('designer_portal_projects');
-            if (savedProjects) {
-              setProjects(JSON.parse(savedProjects));
-            } else {
-              setProjects([]);
-            }
-          } catch (err) {
-            console.error('Error fetching projects:', err);
-            setError('Failed to load projects');
-          }
+        // Retrieve projects from localStorage
+        const savedProjects = localStorage.getItem('designer_portal_projects');
+        if (savedProjects) {
+          setProjects(JSON.parse(savedProjects));
         } else {
-          // No active session, fetch data from localStorage as fallback
-          const savedProjects = localStorage.getItem('designer_portal_projects');
-          if (savedProjects) {
-            setProjects(JSON.parse(savedProjects));
-          } else {
-            setProjects([]);
-          }
+          setProjects([]);
         }
         
         setLoading(false);
@@ -54,13 +32,6 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     fetchProjects();
-    
-    // For realtime updates, we would connect to Supabase here
-    // But since we don't have the tables set up yet, we'll skip that
-    
-    return () => {
-      // Cleanup function would go here
-    };
   }, []);
 
   // Helper function to generate a random token
@@ -70,22 +41,9 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addProject = async (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>) => {
     try {
-      // Get current user session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast({
-          title: 'Authentication Error',
-          description: 'You must be logged in to create a project',
-          variant: 'destructive'
-        });
-        return null;
-      }
-      
       const token = generateToken();
       
-      // Since we don't have the database tables set up yet,
-      // we'll create the project in local state and localStorage
+      // Create the project in local state and localStorage
       const newProject: Project = {
         id: `proj-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
         name: projectData.name,
@@ -145,22 +103,24 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const updateProjectStatus = async (id: string, status: ProjectStatus, comments?: string) => {
     try {
-      // Since we don't have database tables set up yet,
-      // we'll update the project in local state and localStorage
+      // Update the project in local state and localStorage
       const updatedProjects = projects.map(project => {
         if (project.id === id) {
+          const updatedAuditLog = [
+            ...(project.auditLog || []),
+            {
+              timestamp: new Date().toISOString(),
+              action: status === 'approved' ? 'approved' : 
+                     status === 'rejected' ? 'rejected' : 'commented'
+            }
+          ] as AuditLogEvent[];
+          
           return { 
             ...project, 
             status, 
             comments: comments || project.comments,
             progress: calculateProgressByStatus(status, project.progress),
-            auditLog: [
-              ...(project.auditLog || []),
-              {
-                timestamp: new Date().toISOString(),
-                action: status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'commented'
-              }
-            ]
+            auditLog: updatedAuditLog
           };
         }
         return project;
@@ -240,10 +200,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updatedProjects = projects.map(project => {
         if (project.id === id) {
           const auditLog = project.auditLog || [];
+          const newAuditLogEntry: AuditLogEvent = { 
+            ...event, 
+            timestamp 
+          };
           
           return {
             ...project,
-            auditLog: [...auditLog, { ...event, timestamp }],
+            auditLog: [...auditLog, newAuditLogEntry],
             lastViewed: event.action === 'viewed' ? timestamp : project.lastViewed
           };
         }

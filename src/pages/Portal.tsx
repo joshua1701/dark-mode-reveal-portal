@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useProjects, Project, ProjectStatus } from '@/context/ProjectContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
@@ -65,83 +64,22 @@ const Portal = () => {
       }
       
       try {
-        // Try to fetch the project directly from Supabase
-        const { data: projectData, error } = await supabase
-          .from('projects')
-          .select(`
-            id, name, preview_url, type, status, customer_email, created_at,
-            created_by, expires_at, password_protected, password, token,
-            brand_name, progress, language, archived
-          `)
-          .eq('id', id)
-          .eq('token', key)
-          .single();
+        // Get the project from our context (which uses localStorage)
+        const localProject = getProjectByIdAndKey(id, key);
         
-        if (error) {
-          console.error('Error fetching project:', error);
-          // Fall back to local storage
-          const localProject = getProjectByIdAndKey(id, key);
-          
-          if (!localProject) {
-            setIsVerifying(false);
-            toast({
-              title: 'Project Not Found',
-              description: 'The requested project could not be found',
-              variant: 'destructive',
-            });
-            return;
-          }
-          
-          setProject(localProject);
-          setLanguage(localProject.language || 'en');
-          handleProjectFound(localProject);
-        } else {
-          // Fetch audit logs for the project
-          const { data: auditLogData } = await supabase
-            .from('audit_log')
-            .select('*')
-            .eq('project_id', projectData.id)
-            .order('timestamp', { ascending: false });
-          
-          // Find last viewed timestamp
-          const lastViewedEntry = auditLogData?.find((entry: any) => entry.action === 'viewed');
-          
-          // Map to our Project type
-          const mappedProject: Project = {
-            id: projectData.id,
-            name: projectData.name,
-            status: projectData.status as ProjectStatus,
-            createdAt: projectData.created_at,
-            customerEmail: projectData.customer_email,
-            previewUrl: projectData.preview_url,
-            fileData: projectData.type === 'file' ? {
-              fileName: 'file', // Need to fetch file data separately
-              fileType: 'file',
-              fileUrl: projectData.preview_url
-            } : undefined,
-            expiresAt: projectData.expires_at,
-            hasPassword: projectData.password_protected,
-            password: projectData.password,
-            magicKey: projectData.token,
-            comments: '',
-            progress: projectData.progress || 0,
-            auditLog: auditLogData?.map((log: any) => ({
-              timestamp: log.timestamp,
-              action: log.action,
-              ipAddress: log.ip_address,
-              userAgent: log.user_agent
-            })) || [],
-            lastViewed: lastViewedEntry?.timestamp,
-            language: projectData.language || 'en',
-            archived: projectData.archived || false,
-            brandName: projectData.brand_name,
-            version: 1 // Default to version 1
-          };
-          
-          setProject(mappedProject);
-          setLanguage(mappedProject.language || 'en');
-          handleProjectFound(mappedProject);
+        if (!localProject) {
+          setIsVerifying(false);
+          toast({
+            title: 'Project Not Found',
+            description: 'The requested project could not be found',
+            variant: 'destructive',
+          });
+          return;
         }
+        
+        setProject(localProject);
+        setLanguage(localProject.language || 'en');
+        handleProjectFound(localProject);
       } catch (error) {
         console.error('Error loading project:', error);
         setIsVerifying(false);
@@ -167,17 +105,7 @@ const Portal = () => {
         const ipAddress = await getUserIP();
         const userAgent = navigator.userAgent;
         
-        // Add to Supabase
-        await supabase
-          .from('audit_log')
-          .insert({
-            project_id: foundProject.id,
-            action: 'viewed',
-            ip_address: ipAddress,
-            user_agent: userAgent
-          });
-        
-        // Also update local copy via context
+        // Add to local audit log via context
         addAuditLog(foundProject.id, {
           action: 'viewed',
           ipAddress,
@@ -226,15 +154,10 @@ const Portal = () => {
     const [id, key] = parts;
     
     try {
-      // Try to fetch the project from Supabase
-      const { data: projectData, error } = await supabase
-        .from('projects')
-        .select('id, token')
-        .eq('id', id)
-        .eq('token', key)
-        .single();
+      // Try to find the project in the local storage via context
+      const project = getProjectByIdAndKey(id, key);
       
-      if (error || !projectData) {
+      if (!project) {
         setTokenError(language === 'en' ? 
           'Invalid token. Please try again.' : 
           'Ungültiger Token. Bitte versuchen Sie es erneut.');
@@ -279,7 +202,7 @@ const Portal = () => {
     setIsSubmitting(true);
     
     try {
-      // Update in Supabase
+      // Update locally via context
       await updateProjectStatus(project.id, 'rejected', rejectionReason);
       
       toast({
@@ -315,7 +238,7 @@ const Portal = () => {
     setIsSubmitting(true);
     
     try {
-      // Update in Supabase
+      // Update locally via context
       await updateProjectRating(project.id, rating);
       await updateProjectStatus(project.id, 'approved');
       
@@ -349,49 +272,26 @@ const Portal = () => {
     if (!project?.fileData) return;
     
     try {
-      // Try to get a signed URL from Supabase if this is a file in storage
-      const { data: filesData, error: filesError } = await supabase
-        .from('files')
-        .select('url, type')
-        .eq('project_id', project.id)
-        .single();
+      // Use direct download without Supabase
+      downloadFile(project.fileData.watermarkedUrl || project.fileData.fileUrl, project.fileData.fileName);
       
-      if (filesError) {
-        console.error('Error fetching file info:', filesError);
-        // Fall back to direct URL
-        downloadFile(project.fileData.watermarkedUrl || project.fileData.fileUrl, project.fileData.fileName);
-        return;
-      }
-      
-      // Get a signed URL for the file
-      const { data: signedUrl, error: signError } = await supabase
-        .storage
-        .from('project_files')
-        .createSignedUrl(filesData.url, 60); // Valid for 60 seconds
-      
-      if (signError) {
-        console.error('Error getting signed URL:', signError);
-        // Fall back to direct URL
-        downloadFile(project.fileData.watermarkedUrl || project.fileData.fileUrl, project.fileData.fileName);
-        return;
-      }
-      
-      downloadFile(signedUrl.signedUrl, filesData.url.split('/').pop() || 'download');
+      toast({
+        title: language === 'en' ? 'Download started' : 'Download gestartet',
+        description: language === 'en' ? 
+          'Your file is being downloaded' : 
+          'Ihre Datei wird heruntergeladen',
+      });
+
+      // Log download in audit log
+      addAuditLog(project.id, { action: 'viewed' });
     } catch (error) {
       console.error('Error downloading file:', error);
-      // Fall back to direct URL
-      downloadFile(project.fileData.watermarkedUrl || project.fileData.fileUrl, project.fileData.fileName);
+      toast({
+        title: 'Download Error',
+        description: 'Failed to download the file',
+        variant: 'destructive',
+      });
     }
-    
-    toast({
-      title: language === 'en' ? 'Download started' : 'Download gestartet',
-      description: language === 'en' ? 
-        'Your file is being downloaded' : 
-        'Ihre Datei wird heruntergeladen',
-    });
-
-    // Log download in audit log
-    addAuditLog(project.id, { action: 'viewed' });
   };
   
   const downloadFile = (url: string, filename: string) => {
