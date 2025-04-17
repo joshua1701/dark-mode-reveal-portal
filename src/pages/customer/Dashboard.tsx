@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useProjects, Project } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
@@ -157,7 +156,7 @@ const ProjectCard: React.FC<{ project: Project }> = ({ project }) => {
       </CardContent>
       <CardFooter>
         <Button className="w-full" asChild>
-          <Link to={`/portal?id=${project.id}&key=${project.magicKey}`}>
+          <Link to={`/customer/project/${project.id}`}>
             View Project
           </Link>
         </Button>

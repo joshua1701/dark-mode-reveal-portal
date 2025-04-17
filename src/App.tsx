@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import CreateProject from "./pages/admin/CreateProject";
 import CustomerDashboard from "./pages/customer/Dashboard";
+import CustomerProjectView from "./pages/customer/ProjectView";
 import Portal from "./pages/Portal";
 import NotFound from "./pages/NotFound";
 
@@ -81,6 +82,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={['customer']}>
                     <CustomerDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/customer/project/:id" 
+                element={
+                  <ProtectedRoute allowedRoles={['customer']}>
+                    <CustomerProjectView />
                   </ProtectedRoute>
                 } 
               />
