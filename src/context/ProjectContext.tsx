@@ -1,11 +1,27 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from '@/components/ui/use-toast';
+import { Project, ProjectStatus, AuditLogEvent } from '@/types/project';
 import { ProjectContextType } from './ProjectContextType';
-import { Project } from '@/types/project';
-import { useProjectOperations } from '@/hooks/useProjectOperations';
-import { useAuditLogOperations } from '@/hooks/useAuditLogOperations';
-import { useProjectManagement } from '@/hooks/useProjectManagement';
-import { useEmailOperations } from '@/hooks/useEmailOperations';
+import { mockProjects } from '@/data/mockProjects';
+import { 
+  generateProjectId, 
+  generateMagicKey, 
+  getProjectById, 
+  getProjectByIdAndKey as getProjectByIdAndKeyUtil,
+  updateProjectStatus as updateProjectStatusUtil,
+  updateProjectRating as updateProjectRatingUtil,
+  addAuditLogEntry,
+  setProjectArchived as setProjectArchivedUtil,
+  updateInternalNotes as updateInternalNotesUtil,
+  updateProjectVersion as updateProjectVersionUtil,
+  updateProjectLanguage as updateProjectLanguageUtil,
+  updateBrandName as updateBrandNameUtil,
+  deleteProject as deleteProjectUtil
+} from '@/utils/projectUtils';
+import { 
+  sendProjectNotification, 
+  sendReminderEmail as sendReminderEmailUtil 
+} from '@/utils/emailService';
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
@@ -14,44 +30,22 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize hooks
-  const {
-    addProject,
-    getProject,
-    getProjectByIdAndKey,
-    updateProjectStatus,
-    updateProjectRating
-  } = useProjectOperations(projects);
-
-  const { addAuditLog } = useAuditLogOperations(projects, setProjects);
-
-  const {
-    setProjectArchived,
-    updateInternalNotes,
-    updateProjectVersion,
-    updateProjectLanguage,
-    updateBrandName,
-    deleteProject
-  } = useProjectManagement(projects, setProjects);
-
-  const { sendReminderEmail } = useEmailOperations(projects, setProjects, getProject);
-
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
+        await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Retrieve projects from localStorage
         const savedProjects = localStorage.getItem('designer_portal_projects');
         if (savedProjects) {
           setProjects(JSON.parse(savedProjects));
         } else {
-          setProjects([]);
+          setProjects(mockProjects);
+          localStorage.setItem('designer_portal_projects', JSON.stringify(mockProjects));
         }
         
         setLoading(false);
       } catch (err) {
-        console.error('Error in fetchProjects:', err);
         setError('Failed to load projects');
         setLoading(false);
       }
@@ -59,6 +53,177 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     fetchProjects();
   }, []);
+
+  const updateLocalStorage = (updatedProjects: Project[]) => {
+    localStorage.setItem('designer_portal_projects', JSON.stringify(updatedProjects));
+  };
+
+  const addProject = (projectData: Omit<Project, 'id' | 'createdAt' | 'status' | 'magicKey' | 'auditLog'>) => {
+    const newId = generateProjectId();
+    const magicKey = generateMagicKey();
+    
+    const newProject: Project = {
+      ...projectData,
+      id: newId,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      magicKey,
+      progress: projectData.progress || 20,
+      auditLog: [{
+        timestamp: new Date().toISOString(),
+        action: 'created'
+      }],
+      version: 1
+    };
+    
+    const updatedProjects = [...projects, newProject];
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Project created',
+      description: `${newProject.name} has been created successfully`,
+    });
+    
+    const language = newProject.language || 'en';
+    sendProjectNotification(newProject, language);
+    
+    console.log(`Magic link for project ${newProject.name}: /portal?id=${newId}&key=${magicKey}`);
+    
+    return newProject;
+  };
+
+  const getProject = (id: string) => {
+    return getProjectById(projects, id);
+  };
+
+  const getProjectByIdAndKey = (id: string, key: string) => {
+    return getProjectByIdAndKeyUtil(projects, id, key);
+  };
+
+  const updateProjectStatus = (id: string, status: ProjectStatus, comments?: string) => {
+    const updatedProjects = updateProjectStatusUtil(projects, id, status, comments);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    const statusText = status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : status;
+    toast({
+      title: `Project ${statusText}`,
+      description: `The project has been ${statusText} successfully`,
+      variant: status === 'approved' ? 'default' : status === 'rejected' ? 'destructive' : 'default',
+    });
+  };
+
+  const updateProjectRating = (id: string, rating: 1 | 2 | 3 | 4 | 5) => {
+    const updatedProjects = updateProjectRatingUtil(projects, id, rating);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Rating submitted',
+      description: 'Thank you for your feedback!',
+    });
+  };
+
+  const addAuditLog = (id: string, event: Omit<AuditLogEvent, 'timestamp'>) => {
+    const updatedProjects = addAuditLogEntry(projects, id, event);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+  };
+
+  const setProjectArchived = (id: string, archived: boolean) => {
+    const updatedProjects = setProjectArchivedUtil(projects, id, archived);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: archived ? 'Project archived' : 'Project restored',
+      description: archived 
+        ? 'The project has been moved to archives' 
+        : 'The project has been restored from archives',
+    });
+  };
+
+  const updateInternalNotes = (id: string, notes: string) => {
+    const updatedProjects = updateInternalNotesUtil(projects, id, notes);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Notes updated',
+      description: 'Internal notes have been saved',
+    });
+  };
+
+  const updateProjectVersion = (id: string, version: number) => {
+    const updatedProjects = updateProjectVersionUtil(projects, id, version);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Version updated',
+      description: `Project version set to v${version}`,
+    });
+  };
+
+  const updateProjectLanguage = (id: string, language: 'en' | 'de') => {
+    const updatedProjects = updateProjectLanguageUtil(projects, id, language);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Language updated',
+      description: `Project language set to ${language === 'en' ? 'English' : 'German'}`,
+    });
+  };
+
+  const updateBrandName = (id: string, brandName: string) => {
+    const updatedProjects = updateBrandNameUtil(projects, id, brandName);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Brand name updated',
+      description: `Project brand name set to "${brandName}"`,
+    });
+  };
+
+  const sendReminderEmail = async (id: string): Promise<boolean> => {
+    const project = getProject(id);
+    if (!project) return false;
+    
+    const language = project.language || 'en';
+    const success = await sendReminderEmailUtil(project, language);
+    
+    if (success) {
+      const updatedProjects = addAuditLogEntry(projects, id, { action: 'reminded' });
+      setProjects(updatedProjects);
+      updateLocalStorage(updatedProjects);
+    }
+    
+    return success;
+  };
+
+  const deleteProject = (id: string) => {
+    const updatedProjects = deleteProjectUtil(projects, id);
+    
+    setProjects(updatedProjects);
+    updateLocalStorage(updatedProjects);
+    
+    toast({
+      title: 'Project deleted',
+      description: 'The project has been permanently deleted',
+      variant: 'destructive',
+    });
+  };
 
   return (
     <ProjectContext.Provider 

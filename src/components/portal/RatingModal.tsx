@@ -2,7 +2,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import StarRating from '@/components/StarRating';
 
 // Translation content
@@ -12,16 +12,14 @@ const translations = {
     rateExperience: 'How would you rate your experience?',
     yourRating: 'Your rating',
     cancel: 'Cancel',
-    submit: 'Submit & Approve',
-    submitting: 'Submitting...'
+    submit: 'Submit & Approve'
   },
   de: {
     approveProject: 'Projekt genehmigen',
     rateExperience: 'Wie würden Sie Ihre Erfahrung bewerten?',
     yourRating: 'Ihre Bewertung',
     cancel: 'Abbrechen',
-    submit: 'Absenden & Genehmigen',
-    submitting: 'Wird gesendet...'
+    submit: 'Absenden & Genehmigen'
   }
 };
 
@@ -32,7 +30,6 @@ type RatingModalProps = {
   setRating: (rating: 1 | 2 | 3 | 4 | 5) => void;
   onSubmit: () => void;
   language?: 'en' | 'de';
-  isSubmitting?: boolean;
 };
 
 const RatingModal: React.FC<RatingModalProps> = ({
@@ -41,8 +38,7 @@ const RatingModal: React.FC<RatingModalProps> = ({
   rating,
   setRating,
   onSubmit,
-  language = 'en',
-  isSubmitting = false
+  language = 'en'
 }) => {
   const t = translations[language];
   
@@ -80,23 +76,14 @@ const RatingModal: React.FC<RatingModalProps> = ({
               variant="outline" 
               onClick={() => onOpenChange(false)}
               className="border-white/10 hover:bg-white/10"
-              disabled={isSubmitting}
             >
               {t.cancel}
             </Button>
             <Button 
               type="submit"
               className="bg-designer-badge hover:bg-designer-hover text-black font-medium"
-              disabled={isSubmitting}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t.submitting}
-                </>
-              ) : (
-                t.submit
-              )}
+              {t.submit}
             </Button>
           </DialogFooter>
         </form>

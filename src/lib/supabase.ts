@@ -16,10 +16,10 @@ export const handleSupabaseError = (error: any) => {
   if (error.message === 'Failed to fetch') {
     toast({
       title: 'Connection Error',
-      description: 'Could not connect to authentication service. Using offline mode.',
+      description: 'Could not connect to authentication service. Please check your internet connection.',
       variant: 'destructive'
     });
-    return true; // Return true to indicate offline fallback should be used
+    return;
   }
   
   // Handle specific error codes
@@ -46,8 +46,6 @@ export const handleSupabaseError = (error: any) => {
         variant: 'destructive'
       });
   }
-  
-  return false; // No offline fallback needed
 };
 
 // User types from Supabase
@@ -93,23 +91,3 @@ export const setupDemoUser = async () => {
     }
   }
 };
-
-// Demo users for offline mode
-export const demoUsers = [
-  {
-    id: 'admin-id-123',
-    email: 'admin@cogswellshare.com',
-    username: 'admin',
-    password: 'DemoAdmin123!',
-    role: 'admin',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'customer-id-456',
-    email: 'customer@example.com',
-    username: 'customer',
-    password: 'DemoCustomer123!',
-    role: 'customer',
-    createdAt: new Date().toISOString()
-  }
-];

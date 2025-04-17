@@ -1,36 +1,25 @@
 
 import React from 'react';
-import { 
-  Dialog,
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription,
-  DialogFooter 
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
 
 // Translation content
 const translations = {
   en: {
-    rejectProject: 'Reject Project',
-    provideReason: 'Please provide a reason for rejection',
+    requestChanges: 'Request Changes',
+    provideDetails: 'Please provide details about the changes you need',
     yourFeedback: 'Your feedback',
-    placeholder: 'What could be improved?',
     cancel: 'Cancel',
-    submit: 'Submit Rejection',
-    submitting: 'Submitting...'
+    submit: 'Submit Feedback'
   },
   de: {
-    rejectProject: 'Projekt ablehnen',
-    provideReason: 'Bitte geben Sie einen Grund für die Ablehnung an',
+    requestChanges: 'Änderungen anfordern',
+    provideDetails: 'Bitte geben Sie Details zu den gewünschten Änderungen an',
     yourFeedback: 'Ihr Feedback',
-    placeholder: 'Was könnte verbessert werden?',
     cancel: 'Abbrechen',
-    submit: 'Ablehnung einreichen',
-    submitting: 'Wird gesendet...'
+    submit: 'Feedback senden'
   }
 };
 
@@ -41,7 +30,6 @@ type RejectionModalProps = {
   setRejectionReason: (reason: string) => void;
   onSubmit: () => void;
   language?: 'en' | 'de';
-  isSubmitting?: boolean;
 };
 
 const RejectionModal: React.FC<RejectionModalProps> = ({
@@ -50,8 +38,7 @@ const RejectionModal: React.FC<RejectionModalProps> = ({
   rejectionReason,
   setRejectionReason,
   onSubmit,
-  language = 'en',
-  isSubmitting = false
+  language = 'en'
 }) => {
   const t = translations[language];
   
@@ -67,9 +54,9 @@ const RejectionModal: React.FC<RejectionModalProps> = ({
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 mb-2">
             <X className="h-6 w-6 text-red-500" />
           </div>
-          <DialogTitle className="text-center">{t.rejectProject}</DialogTitle>
+          <DialogTitle className="text-center">{t.requestChanges}</DialogTitle>
           <DialogDescription className="text-center text-designer-text-secondary">
-            {t.provideReason}
+            {t.provideDetails}
           </DialogDescription>
         </DialogHeader>
         
@@ -81,10 +68,8 @@ const RejectionModal: React.FC<RejectionModalProps> = ({
             <Textarea
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder={t.placeholder}
-              className="bg-white/5 border-white/10 min-h-[100px]"
+              className="bg-white/5 border-white/10 text-white min-h-[120px]"
               required
-              disabled={isSubmitting}
             />
           </div>
           
@@ -94,23 +79,14 @@ const RejectionModal: React.FC<RejectionModalProps> = ({
               variant="outline" 
               onClick={() => onOpenChange(false)}
               className="border-white/10 hover:bg-white/10"
-              disabled={isSubmitting}
             >
               {t.cancel}
             </Button>
             <Button 
               type="submit"
-              variant="destructive"
-              disabled={isSubmitting || !rejectionReason.trim()}
+              className="bg-red-500 hover:bg-red-600"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t.submitting}
-                </>
-              ) : (
-                t.submit
-              )}
+              {t.submit}
             </Button>
           </DialogFooter>
         </form>

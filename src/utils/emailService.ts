@@ -1,3 +1,4 @@
+
 import { Project } from "@/types/project";
 import { toast } from "@/components/ui/use-toast";
 
@@ -18,14 +19,14 @@ export type SMTPConfig = {
 // Default SMTP configuration
 const DEFAULT_SMTP_CONFIG: SMTPConfig = {
   enabled: true,
-  host: "w01ead7a.kasserver.com",
+  host: "smtp.example.com",
   port: 587,
   secure: false,
   auth: {
-    user: "share@cogswell.it",
-    pass: "Cogswell2024#+"
+    user: "notifications@cogswellshare.com",
+    pass: ""
   },
-  fromEmail: "share@cogswell.it",
+  fromEmail: "notifications@cogswellshare.com",
   fromName: "CogswellShare"
 };
 
@@ -112,7 +113,7 @@ const EMAIL_TEMPLATES = {
   }
 };
 
-// Real email sending function using EmailJS
+// Send email function (simulated in this frontend-only implementation)
 export const sendEmail = async (
   to: string,
   subject: string,
@@ -126,27 +127,17 @@ export const sendEmail = async (
   }
   
   try {
-    // Use EmailJS service to send emails
-    const emailData = {
-      service_id: "default_service", 
-      template_id: "template_default",
-      user_id: "user_id", // We'll use the default emailjs service for now
-      template_params: {
-        to_email: to,
-        subject: subject,
-        message_html: htmlBody,
-        from_name: config.fromName,
-        from_email: config.fromEmail,
-        reply_to: config.fromEmail
-      }
-    };
+    // In a real implementation, this would connect to an API endpoint
+    // that handles the actual SMTP sending
+    console.log("Sending email to:", to);
+    console.log("Subject:", subject);
+    console.log("Body:", htmlBody);
+    console.log("Using SMTP config:", config);
     
-    console.log("Preparing to send email:", emailData);
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // In production, this would connect to an email service API
-    // For now, we'll simulate successful email sending since EmailJS requires frontend integration
-    console.log("Email sent successfully to:", to);
-    
+    // Simulate success (in a real app, this would be the response from the API)
     return true;
   } catch (error) {
     console.error("Failed to send email:", error);

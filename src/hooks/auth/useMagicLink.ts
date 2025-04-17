@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
@@ -44,7 +45,6 @@ export const useMagicLink = () => {
     }
   };
 
-  // Keep the two-parameter signature for verifyMagicLink
   const verifyMagicLink = async (id: string, key: string): Promise<boolean> => {
     try {
       console.log('Verifying magic link:', { id, key });

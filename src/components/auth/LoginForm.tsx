@@ -1,233 +1,218 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Mail, Key, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
 
-const LoginForm = () => {
+type LoginFormProps = {
+  onSwitchToRegistration?: () => void;
+};
+
+const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
+  const { login, loginWithMagicLink, isLoading, users } = useAuth();
+  const navigate = useNavigate();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  const [magicLinkEmail, setMagicLinkEmail] = useState('');
+  const [activeTab, setActiveTab] = useState('password');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (isLoading) return;
+
+    // Add debugging log to verify what's being sent
+    console.log('Attempting login with:', email, password);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      // Trim email and password to prevent whitespace issues
+      const trimmedEmail = email.trim();
+      const trimmedPassword = password;
       
-      if (error) {
-        toast({
-          title: 'Login Failed',
-          description: error.message,
-          variant: 'destructive'
-        });
-        console.error('Login error:', error);
-        
-        // If admin@cogswellshare.com tries to log in but doesn't exist, suggest creating account
-        if (email === 'admin@cogswellshare.com' && error.message.includes('Invalid login credentials')) {
-          toast({
-            title: 'Demo Account',
-            description: 'Would you like to create the demo admin account?',
-            action: (
-              <Button 
-                variant="outline" 
-                onClick={() => handleCreateDemoAdmin()}
-                className="ml-2"
-              >
-                Create Demo Account
-              </Button>
-            )
-          });
+      // Execute login
+      const success = await login(trimmedEmail, trimmedPassword);
+      console.log('Login result:', success);
+      
+      if (success) {
+        // Redirect based on user role
+        const currentUser = users.find(u => u.email === trimmedEmail);
+        if (currentUser && currentUser.role === 'customer') {
+          navigate('/customer/dashboard');
+        } else {
+          navigate('/admin/dashboard');
         }
-      } else {
-        // Login successful - the redirection is handled in the Login component
-        toast({
-          title: 'Login Successful',
-          description: 'You are now logged in'
-        });
       }
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Login error:', error);
       toast({
-        title: 'Login Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
+        title: "Login failed",
+        description: "Please check your credentials or try again later.",
+        variant: "destructive"
       });
-      console.error('Login exception:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleCreateDemoAdmin = async () => {
-    setIsLoading(true);
-    
+  const handleMagicLinkLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLoading) return;
+
     try {
-      // Create demo admin user
-      const { data, error } = await supabase.auth.signUp({
-        email: 'admin@cogswellshare.com',
-        password: 'DemoAdmin123!',
-        options: {
-          data: {
-            username: 'Admin',
-            role: 'admin'
-          }
-        }
-      });
+      const trimmedEmail = magicLinkEmail.trim();
+      const success = await loginWithMagicLink(trimmedEmail);
       
-      if (error) {
+      if (success) {
         toast({
-          title: 'Account Creation Failed',
-          description: error.message,
-          variant: 'destructive'
+          title: "Magic link sent",
+          description: "Please check your email for the login link.",
         });
-        console.error('Account creation error:', error);
-      } else {
-        toast({
-          title: 'Demo Account Created',
-          description: 'You can now log in with admin@cogswellshare.com and DemoAdmin123!',
-        });
-        
-        // Set form values to demo credentials
-        setEmail('admin@cogswellshare.com');
-        setPassword('DemoAdmin123!');
       }
-    } catch (error: any) {
+    } catch (error) {
+      console.error('Magic link error:', error);
       toast({
-        title: 'Account Creation Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
+        title: "Failed to send magic link",
+        description: "Please check your email or try again later.",
+        variant: "destructive"
       });
-      console.error('Account creation exception:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleSendMagicLink = async () => {
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      toast({
-        title: 'Invalid Email',
-        description: 'Please enter a valid email address',
-        variant: 'destructive'
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        toast({
-          title: 'Magic Link Failed',
-          description: error.message,
-          variant: 'destructive'
-        });
-        console.error('Magic link error:', error);
-      } else {
-        toast({
-          title: 'Magic Link Sent',
-          description: 'Check your email for the login link',
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Magic Link Error',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive'
-      });
-      console.error('Magic link exception:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
     <Card className="w-full max-w-md bg-black/40 border-white/10">
       <CardHeader>
-        <CardTitle className="text-xl">Sign In</CardTitle>
-        <CardDescription>Enter your credentials to access your account</CardDescription>
+        <CardTitle>Login</CardTitle>
+        <CardDescription>
+          Enter your credentials to access the portal
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="bg-white/5 border-white/10"
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="password">Password</Label>
-              <a onClick={handleSendMagicLink} className="text-xs text-designer-badge hover:underline cursor-pointer">
-                Or use magic link
-              </a>
-            </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="bg-white/5 border-white/10"
-            />
-          </div>
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </Button>
-          
-          {/* Demo account hint */}
-          <div className="text-center mt-4 text-xs text-designer-text-secondary">
-            <p>Demo Account: admin@cogswellshare.com / DemoAdmin123!</p>
-          </div>
-        </form>
-      </CardContent>
-      <CardFooter className="flex justify-center border-t border-white/10 p-4">
-        <p className="text-center text-sm text-designer-text-secondary">
-          Don't have an account?{' '}
-          <Button 
-            variant="link" 
-            className="text-designer-badge p-0 h-auto font-normal"
-            onClick={() => navigate('/register')}
-          >
-            Create Account
-          </Button>
-        </p>
-      </CardFooter>
+      
+      <Tabs defaultValue="password" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 bg-black/20">
+          <TabsTrigger value="password">Password</TabsTrigger>
+          <TabsTrigger value="magic-link">Magic Link</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="password">
+          <form onSubmit={handleLogin}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-designer-text-secondary" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    required
+                    className="pl-10 bg-white/5 border-white/10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-designer-text-secondary" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    className="pl-10 pr-10 bg-white/5 border-white/10"
+                  />
+                  <button 
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-designer-text-secondary"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="text-xs text-designer-text-secondary">
+                <p>Demo credentials:</p>
+                <p>Email: admin@cogswellshare.com</p>
+                <p>Password: DemoAdmin123!</p>
+              </div>
+            </CardContent>
+            
+            <CardFooter>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Please wait
+                  </>
+                ) : 'Login'}
+              </Button>
+            </CardFooter>
+          </form>
+        </TabsContent>
+        
+        <TabsContent value="magic-link">
+          <form onSubmit={handleMagicLinkLogin}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="magic-link-email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-designer-text-secondary" />
+                  <Input
+                    id="magic-link-email"
+                    type="email"
+                    value={magicLinkEmail}
+                    onChange={(e) => setMagicLinkEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    required
+                    className="pl-10 bg-white/5 border-white/10"
+                  />
+                </div>
+              </div>
+              
+              <p className="text-xs text-designer-text-secondary">
+                We'll send a magic link to your email that will log you in instantly.
+              </p>
+            </CardContent>
+            
+            <CardFooter>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending link
+                  </>
+                ) : 'Send Magic Link'}
+              </Button>
+            </CardFooter>
+          </form>
+        </TabsContent>
+      </Tabs>
     </Card>
   );
 };
