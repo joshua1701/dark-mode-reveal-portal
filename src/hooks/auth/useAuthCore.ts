@@ -26,15 +26,38 @@ export const useAuthCore = () => {
         if (data?.session?.user) {
           const supabaseUser = data.session.user;
           if (!savedUser) {
-            const newUser: User = {
-              id: supabaseUser.id,
-              username: supabaseUser.email?.split('@')[0] || 'User',
-              email: supabaseUser.email || '',
-              role: supabaseUser.email === 'admin@cogswellshare.com' ? 'admin' : 'customer',
-              createdAt: new Date().toISOString(),
-            };
-            setUser(newUser);
-            localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+            // Fetch profile from Supabase
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', supabaseUser.id)
+              .single();
+            
+            if (profileError) {
+              console.error('Error fetching profile:', profileError);
+              // fallback to creating a basic user object
+              const newUser: User = {
+                id: supabaseUser.id,
+                username: supabaseUser.email?.split('@')[0] || 'User',
+                email: supabaseUser.email || '',
+                role: supabaseUser.email === 'admin@cogswellshare.com' ? 'admin' : 'customer',
+                createdAt: new Date().toISOString(),
+              };
+              setUser(newUser);
+              localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+            } else if (profileData) {
+              // Map profile data to User type
+              const newUser: User = {
+                id: profileData.id,
+                username: profileData.username,
+                email: profileData.email,
+                role: profileData.role as UserRole,
+                profileImage: profileData.profile_image,
+                createdAt: profileData.created_at,
+              };
+              setUser(newUser);
+              localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+            }
           }
         }
       } catch (error) {
@@ -94,21 +117,46 @@ export const useAuthCore = () => {
               return false;
             }
           } else if (data?.user) {
-            const userRole: UserRole = email === 'admin@cogswellshare.com' ? 'admin' : 'customer';
-            const newUser: User = {
-              id: data.user.id,
-              username: email.split('@')[0],
-              email: email,
-              role: userRole,
-              createdAt: new Date().toISOString(),
-            };
+            // Fetch user profile from profiles table
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
             
-            setUser(newUser);
-            localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+            if (profileError) {
+              console.error('Error fetching profile:', profileError);
+              const userRole: UserRole = email === 'admin@cogswellshare.com' ? 'admin' : 'customer';
+              
+              // Create a new user profile if it doesn't exist
+              const newUser: User = {
+                id: data.user.id,
+                username: email.split('@')[0],
+                email: email,
+                role: userRole,
+                createdAt: new Date().toISOString(),
+              };
+              
+              setUser(newUser);
+              localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+            } else {
+              // Use profile data for the user
+              const newUser: User = {
+                id: profileData.id,
+                username: profileData.username,
+                email: profileData.email,
+                role: profileData.role as UserRole,
+                profileImage: profileData.profile_image,
+                createdAt: profileData.created_at,
+              };
+              
+              setUser(newUser);
+              localStorage.setItem('designer_portal_user', JSON.stringify(newUser));
+            }
             
             toast({
               title: 'Login Successful',
-              description: `Welcome back, ${newUser.username}!`,
+              description: `Welcome back, ${profileData?.username || email.split('@')[0]}!`,
             });
             
             setIsLoading(false);

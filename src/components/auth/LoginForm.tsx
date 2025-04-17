@@ -167,12 +167,6 @@ const LoginForm = ({ onSwitchToRegistration }: LoginFormProps) => {
                   </button>
                 </div>
               </div>
-              
-              <div className="text-xs text-designer-text-secondary">
-                <p>Demo credentials:</p>
-                <p>Email: admin@cogswellshare.com</p>
-                <p>Password: DemoAdmin123!</p>
-              </div>
             </CardContent>
             
             <CardFooter>
