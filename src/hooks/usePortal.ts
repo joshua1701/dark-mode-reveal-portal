@@ -1,15 +1,11 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProjects, Project, ProjectStatus } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 
-// Get user's IP address (in a real app, this would be handled server-side)
 const getUserIP = async (): Promise<string> => {
   try {
-    // In a production environment, you would use your own backend endpoint
-    // This is just for demonstration purposes
     const response = await fetch('https://api.ipify.org?format=json');
     const data = await response.json();
     return data.ip;
@@ -44,6 +40,7 @@ export const usePortal = () => {
   const [tokenError, setTokenError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkErrorDetails, setLinkErrorDetails] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -51,10 +48,9 @@ export const usePortal = () => {
     const key = params.get('key');
     
     const loadProject = async () => {
-      // Debug logs to help track down issues
       console.log("URL parameters:", { id, key });
+      console.log("Projects context loaded:", projects.length > 0 ? "Yes" : "No");
       
-      // If no id or key in the URL, show token input modal
       if (!id || !key) {
         setIsVerifying(false);
         setIsTokenModalOpen(true);
@@ -62,13 +58,13 @@ export const usePortal = () => {
       }
       
       try {
-        // Verify the magic link
         const isValid = await verifyMagicLink(id, key);
         console.log("Magic link verification result:", isValid);
         
         if (!isValid) {
           setIsVerifying(false);
           setLinkError("Invalid or expired link");
+          setLinkErrorDetails(`ID: ${id}, Key prefix: ${key.substring(0, 3)}...`);
           toast({
             title: 'Invalid Link',
             description: 'This project link is invalid or expired',
@@ -77,19 +73,20 @@ export const usePortal = () => {
           return;
         }
         
-        // Log available projects to help with debugging
-        console.log("Projects in context:", projects);
+        console.log("Projects in context:", projects.length);
         
         const foundProject = getProjectByIdAndKey(id, key);
         
-        // Debug logging to see what's happening
         console.log("Looking for project with id:", id);
         console.log("Looking for project with key:", key);
-        console.log("Found project:", foundProject);
+        console.log("Found project:", foundProject ? "Yes" : "No");
         
         if (!foundProject) {
           setIsVerifying(false);
           setLinkError("Project not found");
+          setLinkErrorDetails(
+            `Project not found in database.\nProjects available: ${projects.length}\nID: ${id}\nKey prefix: ${key.substring(0, 3)}...`
+          );
           toast({
             title: 'Project Not Found',
             description: 'The requested project could not be found. Please check your link.',
@@ -98,7 +95,6 @@ export const usePortal = () => {
           return;
         }
         
-        // Check if project is expired
         if (foundProject.expiresAt) {
           const expiryDate = new Date(foundProject.expiresAt);
           if (expiryDate < new Date()) {
@@ -109,7 +105,6 @@ export const usePortal = () => {
         setProject(foundProject);
         setLanguage(foundProject.language || 'en');
         
-        // Log view in audit log
         try {
           const ipAddress = await getUserIP();
           const userAgent = navigator.userAgent;
@@ -133,6 +128,7 @@ export const usePortal = () => {
       } catch (error) {
         console.error('Error loading project:', error);
         setLinkError("Error loading project");
+        setLinkErrorDetails(error instanceof Error ? error.message : String(error));
         setIsVerifying(false);
       }
     };
@@ -155,7 +151,6 @@ export const usePortal = () => {
   };
 
   const handleTokenSubmit = async () => {
-    // Format of the token should be "id:key"
     const parts = token.trim().split(':');
     if (parts.length !== 2) {
       setTokenError(language === 'en' ? 
@@ -165,11 +160,9 @@ export const usePortal = () => {
     }
 
     const [id, key] = parts;
-    // Fix: Use the correct parameter order for verifyMagicLink
     const isValid = await verifyMagicLink(id, key);
 
     if (isValid) {
-      // Redirect to the project page with the id and key
       navigate(`/portal?id=${id}&key=${key}`);
     } else {
       setTokenError(language === 'en' ? 
@@ -216,7 +209,6 @@ export const usePortal = () => {
         variant: 'destructive',
       });
       
-      // Force refresh project data
       setProject({
         ...project,
         status: 'rejected',
@@ -251,7 +243,6 @@ export const usePortal = () => {
           'Vielen Dank für Ihre Genehmigung!',
       });
       
-      // Force refresh project data
       setProject({
         ...project,
         status: 'approved',
@@ -287,7 +278,6 @@ export const usePortal = () => {
         'Ihre Datei wird heruntergeladen',
     });
 
-    // Log download in audit log
     addAuditLog(project.id, { action: 'viewed' });
   };
   
@@ -311,6 +301,7 @@ export const usePortal = () => {
     isVerified,
     authLoading,
     linkError,
+    linkErrorDetails,
     isExpired,
     isPasswordModalOpen,
     setIsPasswordModalOpen,

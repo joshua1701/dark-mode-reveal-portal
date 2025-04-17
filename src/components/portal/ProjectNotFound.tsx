@@ -4,9 +4,14 @@ import React from 'react';
 type ProjectNotFoundProps = {
   language: 'en' | 'de';
   onNavigateHome: () => void;
+  errorDetails?: string;
 };
 
-const ProjectNotFound: React.FC<ProjectNotFoundProps> = ({ language, onNavigateHome }) => {
+const ProjectNotFound: React.FC<ProjectNotFoundProps> = ({ 
+  language, 
+  onNavigateHome, 
+  errorDetails 
+}) => {
   // Translation content
   const translations = {
     en: {
@@ -14,14 +19,16 @@ const ProjectNotFound: React.FC<ProjectNotFoundProps> = ({ language, onNavigateH
       invalidLink: 'This project link is invalid or expired',
       returnHome: 'Return Home',
       helpText: 'Need help? Contact the project creator for a valid link.',
-      checkLink: 'Please check your link or ask for a new one.'
+      checkLink: 'Please check your link or ask for a new one.',
+      errorDetails: 'Error details:'
     },
     de: {
       projectNotFound: 'Projekt nicht gefunden',
       invalidLink: 'Dieser Projektlink ist ungültig oder abgelaufen',
       returnHome: 'Zur Startseite',
       helpText: 'Brauchen Sie Hilfe? Kontaktieren Sie den Projektersteller für einen gültigen Link.',
-      checkLink: 'Bitte überprüfen Sie Ihren Link oder bitten Sie um einen neuen.'
+      checkLink: 'Bitte überprüfen Sie Ihren Link oder bitten Sie um einen neuen.',
+      errorDetails: 'Fehlerdetails:'
     }
   };
 
@@ -37,6 +44,12 @@ const ProjectNotFound: React.FC<ProjectNotFoundProps> = ({ language, onNavigateH
       <h1 className="text-2xl font-bold mb-4">{t.projectNotFound}</h1>
       <p className="text-designer-text-secondary mb-2">{t.invalidLink}</p>
       <p className="text-designer-text-secondary mb-6">{t.checkLink}</p>
+      {errorDetails && (
+        <div className="mb-6 p-4 bg-black/20 rounded-md max-w-md text-sm">
+          <p className="text-designer-text-secondary mb-2">{t.errorDetails}</p>
+          <p className="font-mono text-xs whitespace-pre-wrap break-words text-designer-text-secondary">{errorDetails}</p>
+        </div>
+      )}
       <button 
         onClick={onNavigateHome}
         className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md transition-colors"

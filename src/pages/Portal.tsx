@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { usePortal } from '@/hooks/usePortal';
@@ -24,6 +23,7 @@ const Portal = () => {
     isVerified,
     authLoading,
     linkError,
+    linkErrorDetails,
     isExpired,
     isPasswordModalOpen,
     setIsPasswordModalOpen,
@@ -74,7 +74,11 @@ const Portal = () => {
   }
   
   if (linkError || !project) {
-    return <ProjectNotFound language={language} onNavigateHome={handleNavigateHome} />;
+    return <ProjectNotFound 
+      language={language} 
+      onNavigateHome={handleNavigateHome} 
+      errorDetails={linkErrorDetails || undefined}
+    />;
   }
   
   return (

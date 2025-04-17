@@ -63,13 +63,22 @@ export const useMagicLink = () => {
       const projects = JSON.parse(savedProjects);
       
       // Log the projects to help with debugging
-      console.log('Available projects:', projects);
+      console.log('Available projects count:', projects.length);
       
+      // Case-insensitive matching for more reliable verification
       const project = projects.find(
-        (p: any) => p.id === id && p.magicKey === key
+        (p: any) => p.id.toLowerCase() === id.toLowerCase() && 
+                   p.magicKey.toLowerCase() === key.toLowerCase()
       );
       
       console.log('Project found:', project ? 'yes' : 'no');
+      
+      if (!project) {
+        // Log some ids for debugging
+        console.log('Sample of available project IDs:', 
+          projects.slice(0, 3).map((p: any) => ({ id: p.id, keyFragment: p.magicKey?.substring(0, 3) }))
+        );
+      }
       
       return !!project;
     } catch (error) {
