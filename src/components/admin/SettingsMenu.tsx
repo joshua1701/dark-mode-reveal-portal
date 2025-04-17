@@ -23,6 +23,7 @@ import { Settings, Upload, UserPlus, Users, UserCircle, Mail, ExternalLink } fro
 import { toast } from '@/components/ui/use-toast';
 import { UserRole } from '@/types/project';
 import { getSmtpConfig, saveSmtpConfig, SMTPConfig } from '@/utils/emailService';
+import { format } from 'date-fns';
 
 const SettingsMenu = () => {
   const { user, updateProfileImage, addUser, users } = useAuth();

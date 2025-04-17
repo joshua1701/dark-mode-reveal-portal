@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useProjects, Project } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
@@ -9,6 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Clock, Eye, Star, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { Navigate, Link } from 'react-router-dom';
+
+// Get status badge color
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'approved': return 'bg-green-500';
+    case 'rejected': return 'bg-red-500';
+    case 'in-review': return 'bg-blue-500';
+    case 'final': return 'bg-purple-500';
+    default: return 'bg-gray-500';
+  }
+};
 
 const CustomerDashboard: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -37,17 +47,6 @@ const CustomerDashboard: React.FC = () => {
         project.brandName?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : customerProjects;
-  
-  // Get status badge color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-green-500';
-      case 'rejected': return 'bg-red-500';
-      case 'in-review': return 'bg-blue-500';
-      case 'final': return 'bg-purple-500';
-      default: return 'bg-gray-500';
-    }
-  };
   
   return (
     <div className="min-h-screen bg-designer-background text-designer-text-primary">
