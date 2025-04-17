@@ -62,7 +62,7 @@ const App = () => (
                 } 
               />
               
-              {/* Portal Route */}
+              {/* Portal Route - No authentication required for magic links */}
               <Route path="/portal" element={<Portal />} />
               
               {/* 404 Route */}

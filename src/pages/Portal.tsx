@@ -16,6 +16,7 @@ import RejectionModal from '@/components/portal/RejectionModal';
 import RatingModal from '@/components/portal/RatingModal';
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher';
 import ExpiryNotice from '@/components/portal/ExpiryNotice';
+import UserSettings from '@/components/portal/UserSettings';
 
 // Translation content
 const translations = {
@@ -23,13 +24,21 @@ const translations = {
     projectNotFound: 'Project Not Found',
     invalidLink: 'This project link is invalid or expired',
     returnHome: 'Return Home',
-    noPreview: 'No preview available'
+    noPreview: 'No preview available',
+    enterToken: 'Enter Your Token',
+    tokenPrompt: 'Please enter the token you received by email',
+    submit: 'Submit',
+    invalidToken: 'Invalid token. Please try again.'
   },
   de: {
     projectNotFound: 'Projekt nicht gefunden',
     invalidLink: 'Dieser Projektlink ist ungültig oder abgelaufen',
     returnHome: 'Zur Startseite',
-    noPreview: 'Keine Vorschau verfügbar'
+    noPreview: 'Keine Vorschau verfügbar',
+    enterToken: 'Token eingeben',
+    tokenPrompt: 'Bitte geben Sie den Token ein, den Sie per E-Mail erhalten haben',
+    submit: 'Absenden',
+    invalidToken: 'Ungültiger Token. Bitte versuchen Sie es erneut.'
   }
 };
 
@@ -67,6 +76,9 @@ const Portal = () => {
   const [rating, setRating] = useState<1 | 2 | 3 | 4 | 5>(5);
   const [language, setLanguage] = useState<'en' | 'de'>('en');
   const [isExpired, setIsExpired] = useState(false);
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
+  const [token, setToken] = useState('');
+  const [tokenError, setTokenError] = useState('');
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -74,13 +86,10 @@ const Portal = () => {
     const key = params.get('key');
     
     const loadProject = async () => {
+      // If no id or key in the URL, show token input modal
       if (!id || !key) {
-        toast({
-          title: 'Invalid Link',
-          description: 'This approval link is invalid or expired',
-          variant: 'destructive',
-        });
-        navigate('/');
+        setIsVerifying(false);
+        setIsTokenModalOpen(true);
         return;
       }
       
@@ -89,7 +98,7 @@ const Portal = () => {
         setIsVerifying(false);
         toast({
           title: 'Invalid Link',
-          description: 'This approval link is invalid or expired',
+          description: 'This project link is invalid or expired',
           variant: 'destructive',
         });
         return;
@@ -161,6 +170,29 @@ const Portal = () => {
       setPasswordError(language === 'en' ? 
         'Incorrect password. Please try again.' : 
         'Falsches Passwort. Bitte versuchen Sie es erneut.');
+    }
+  };
+
+  const handleTokenSubmit = async () => {
+    // Format of the token should be "id:key"
+    const parts = token.trim().split(':');
+    if (parts.length !== 2) {
+      setTokenError(language === 'en' ? 
+        'Invalid token format. Please try again.' : 
+        'Ungültiges Token-Format. Bitte versuchen Sie es erneut.');
+      return;
+    }
+
+    const [id, key] = parts;
+    const isValid = await verifyMagicLink(id, key);
+
+    if (isValid) {
+      // Redirect to the project page with the id and key
+      navigate(`/portal?id=${id}&key=${key}`);
+    } else {
+      setTokenError(language === 'en' ? 
+        'Invalid token. Please try again.' : 
+        'Ungültiger Token. Bitte versuchen Sie es erneut.');
     }
   };
   
@@ -251,6 +283,50 @@ const Portal = () => {
           className="h-16 mb-6"
         />
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Token input modal
+  if (isTokenModalOpen) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen bg-designer-background text-white">
+        <img 
+          src="/lovable-uploads/b906aa0a-ce73-4a5d-bf54-a39b37f9e953.png" 
+          alt="CogswellShare" 
+          className="h-16 mb-6"
+        />
+        <div className="w-full max-w-md p-6 bg-black/80 border border-white/10 rounded-lg">
+          <h1 className="text-2xl font-bold mb-4 text-center">{t.enterToken}</h1>
+          <p className="text-designer-text-secondary mb-6 text-center">{t.tokenPrompt}</p>
+          
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="proj-123:key-abc123"
+              className="w-full p-3 bg-white/5 border border-white/10 rounded-md text-white"
+            />
+            
+            {tokenError && (
+              <p className="text-red-500 text-sm">{tokenError}</p>
+            )}
+            
+            <button 
+              onClick={handleTokenSubmit}
+              className="w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
+            >
+              {t.submit}
+            </button>
+          </div>
+          
+          <div className="mt-8 text-center">
+            <a href="https://cogswell.de" target="_blank" rel="noopener noreferrer" className="text-designer-text-secondary underline hover:text-white">
+              Need help? Visit cogswell.de
+            </a>
+          </div>
+        </div>
       </div>
     );
   }

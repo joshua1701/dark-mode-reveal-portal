@@ -14,6 +14,7 @@ type AuthContextType = {
   addUser: (username: string, email: string, role: UserRole) => string;
 };
 
+// Define the admin users
 const mockUser: User = {
   id: 'admin-1',
   username: 'Admin User',
@@ -22,9 +23,18 @@ const mockUser: User = {
   createdAt: new Date().toISOString()
 };
 
+const joshuaUser: User = {
+  id: 'admin-2',
+  username: 'Joshua',
+  email: 'joshua@cogswell.de',
+  role: 'admin',
+  createdAt: new Date().toISOString()
+};
+
 // Default users array
 const defaultUsers: User[] = [
   mockUser,
+  joshuaUser,
   {
     id: 'customer-1',
     username: 'Customer User',
@@ -76,26 +86,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Simple mock authentication
-      if (email === 'admin@cogswell.de' && password === 'password') {
-        setUser(mockUser);
-        localStorage.setItem('designer_portal_user', JSON.stringify(mockUser));
+      // Mock authentication for both admin users
+      if ((email === 'admin@cogswell.de' && password === 'password') ||
+          (email === 'joshua@cogswell.de' && password === 'Cogswell1234#+')) {
+        // Find the correct user to log in
+        const userToLogin = users.find(u => u.email === email);
         
-        toast({
-          title: 'Login successful',
-          description: 'Welcome back to CogswellShare!',
-        });
+        if (userToLogin) {
+          setUser(userToLogin);
+          localStorage.setItem('designer_portal_user', JSON.stringify(userToLogin));
+          
+          toast({
+            title: 'Login successful',
+            description: 'Welcome back to CogswellShare!',
+          });
 
-        return true;
-      } else {
-        toast({
-          title: 'Login failed',
-          description: 'Invalid email or password',
-          variant: 'destructive',
-        });
-
-        return false;
+          return true;
+        }
       }
+      
+      toast({
+        title: 'Login failed',
+        description: 'Invalid email or password',
+        variant: 'destructive',
+      });
+
+      return false;
     } catch (error) {
       console.error('Login error:', error);
       
