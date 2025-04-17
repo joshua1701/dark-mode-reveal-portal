@@ -5,42 +5,13 @@ import { useProjects, Project, ProjectStatus } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-
-// Newly created components
-import PortalViewport from '@/components/portal/PortalViewport';
-import FilePreview from '@/components/portal/FilePreview';
-import ProjectSidebar from '@/components/portal/ProjectSidebar';
-import ViewportToolbar from '@/components/portal/ViewportToolbar';
+import TokenModal from '@/components/portal/TokenModal';
+import PortalLayout from '@/components/portal/PortalLayout';
+import ProjectNotFound from '@/components/portal/ProjectNotFound';
 import PasswordModal from '@/components/portal/PasswordModal';
 import RejectionModal from '@/components/portal/RejectionModal';
 import RatingModal from '@/components/portal/RatingModal';
-import LanguageSwitcher from '@/components/portal/LanguageSwitcher';
 import ExpiryNotice from '@/components/portal/ExpiryNotice';
-import UserSettings from '@/components/portal/UserSettings';
-
-// Translation content
-const translations = {
-  en: {
-    projectNotFound: 'Project Not Found',
-    invalidLink: 'This project link is invalid or expired',
-    returnHome: 'Return Home',
-    noPreview: 'No preview available',
-    enterToken: 'Enter Your Token',
-    tokenPrompt: 'Please enter the token you received by email',
-    submit: 'Submit',
-    invalidToken: 'Invalid token. Please try again.'
-  },
-  de: {
-    projectNotFound: 'Projekt nicht gefunden',
-    invalidLink: 'Dieser Projektlink ist ungültig oder abgelaufen',
-    returnHome: 'Zur Startseite',
-    noPreview: 'Keine Vorschau verfügbar',
-    enterToken: 'Token eingeben',
-    tokenPrompt: 'Bitte geben Sie den Token ein, den Sie per E-Mail erhalten haben',
-    submit: 'Absenden',
-    invalidToken: 'Ungültiger Token. Bitte versuchen Sie es erneut.'
-  }
-};
 
 // Get user's IP address (in a real app, this would be handled server-side)
 const getUserIP = async (): Promise<string> => {
@@ -272,8 +243,6 @@ const Portal = () => {
     setLanguage(newLanguage);
   };
   
-  const t = translations[language];
-  
   if (isLoading || isVerifying) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-designer-background">
@@ -290,81 +259,24 @@ const Portal = () => {
   // Token input modal
   if (isTokenModalOpen) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen bg-designer-background text-white">
-        <img 
-          src="/lovable-uploads/b906aa0a-ce73-4a5d-bf54-a39b37f9e953.png" 
-          alt="CogswellShare" 
-          className="h-16 mb-6"
-        />
-        <div className="w-full max-w-md p-6 bg-black/80 border border-white/10 rounded-lg">
-          <h1 className="text-2xl font-bold mb-4 text-center">{t.enterToken}</h1>
-          <p className="text-designer-text-secondary mb-6 text-center">{t.tokenPrompt}</p>
-          
-          <div className="space-y-4">
-            <input
-              type="text"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="proj-123:key-abc123"
-              className="w-full p-3 bg-white/5 border border-white/10 rounded-md text-white"
-            />
-            
-            {tokenError && (
-              <p className="text-red-500 text-sm">{tokenError}</p>
-            )}
-            
-            <button 
-              onClick={handleTokenSubmit}
-              className="w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-md transition-colors"
-            >
-              {t.submit}
-            </button>
-          </div>
-          
-          <div className="mt-8 text-center">
-            <a href="https://cogswell.de" target="_blank" rel="noopener noreferrer" className="text-designer-text-secondary underline hover:text-white">
-              Need help? Visit cogswell.de
-            </a>
-          </div>
-        </div>
-      </div>
+      <TokenModal
+        isOpen={isTokenModalOpen}
+        onOpenChange={setIsTokenModalOpen}
+        token={token}
+        setToken={setToken}
+        tokenError={tokenError}
+        onSubmit={handleTokenSubmit}
+        language={language}
+      />
     );
   }
   
   if (!project) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen bg-designer-background text-white">
-        <img 
-          src="/lovable-uploads/b906aa0a-ce73-4a5d-bf54-a39b37f9e953.png" 
-          alt="CogswellShare" 
-          className="h-16 mb-6"
-        />
-        <h1 className="text-2xl font-bold mb-4">{t.projectNotFound}</h1>
-        <p className="text-designer-text-secondary mb-6">{t.invalidLink}</p>
-        <button 
-          onClick={() => navigate('/')}
-          className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-md transition-colors"
-        >
-          {t.returnHome}
-        </button>
-        <div className="mt-8 text-center">
-          <a href="https://cogswell.de" target="_blank" rel="noopener noreferrer" className="text-designer-text-secondary underline hover:text-white">
-            Need help? Visit cogswell.de
-          </a>
-        </div>
-      </div>
-    );
+    return <ProjectNotFound language={language} onNavigateHome={() => navigate('/')} />;
   }
   
   return (
-    <div className="flex flex-col h-screen bg-designer-background">
-      <div className="absolute top-4 right-4 z-50">
-        <LanguageSwitcher 
-          currentLanguage={language} 
-          onLanguageChange={handleLanguageChange}
-        />
-      </div>
-      
+    <>
       <PasswordModal
         isOpen={isPasswordModalOpen}
         onOpenChange={setIsPasswordModalOpen}
@@ -398,46 +310,21 @@ const Portal = () => {
       )}
       
       {isVerified && (
-        <div className="flex flex-col md:flex-row h-full">
-          <ProjectSidebar 
-            project={project}
-            onStatusChange={handleStatusChange}
-            handleCopyLink={handleCopyLink}
-            language={language}
-            isExpired={isExpired}
-            onDownload={handleDownload}
-          />
-          
-          <div className="flex-1 flex flex-col">
-            <ViewportToolbar
-              viewport={viewport}
-              setViewport={setViewport}
-              zoom={zoom}
-              setZoom={setZoom}
-              hasPreviewUrl={!!project.previewUrl}
-              language={language}
-            />
-            
-            <div className="flex-1 p-4 overflow-hidden">
-              {project.previewUrl ? (
-                <PortalViewport url={project.previewUrl} viewport={viewport} zoom={zoom} />
-              ) : project.fileData ? (
-                <FilePreview 
-                  fileData={project.fileData} 
-                  zoom={zoom} 
-                  onDownload={handleDownload}
-                  language={language}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-designer-text-secondary">
-                  {t.noPreview}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <PortalLayout
+          project={project}
+          viewport={viewport}
+          setViewport={setViewport}
+          zoom={zoom}
+          setZoom={setZoom}
+          language={language}
+          onLanguageChange={handleLanguageChange}
+          onStatusChange={handleStatusChange}
+          onCopyLink={handleCopyLink}
+          onDownload={handleDownload}
+          isExpired={isExpired}
+        />
       )}
-    </div>
+    </>
   );
 };
 
