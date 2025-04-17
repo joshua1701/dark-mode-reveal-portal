@@ -18,7 +18,7 @@ import {
   updateProjectLanguage as updateProjectLanguageUtil,
   updateBrandName as updateBrandNameUtil,
   deleteProject as deleteProjectUtil
-} from '@/utils/projectUtils';
+} from '@/utils/project';
 import { 
   sendProjectNotification, 
   sendReminderEmail as sendReminderEmailUtil 
