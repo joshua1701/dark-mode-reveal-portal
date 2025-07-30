@@ -33,10 +33,13 @@ export const useAuthOperations = (
             console.error('Login error:', error);
             setLoginAttempts(prev => prev + 1);
             
-            const shouldUseOffline = handleSupabaseError(error);
+            // Check if it's a connection error (Failed to fetch, Load failed, etc.)
+            const isConnectionError = error.message?.includes('Failed to fetch') || 
+                                    error.message?.includes('Load failed') ||
+                                    error.message?.includes('Network request failed');
             
-            if (shouldUseOffline || loginAttempts >= 1) {
-              console.log('Switching to offline mode after failed attempt');
+            if (isConnectionError || loginAttempts >= 1) {
+              console.log('Connection issue detected, switching to offline mode');
               setIsOfflineMode(true);
               toast({
                 title: 'Connection Issue',
