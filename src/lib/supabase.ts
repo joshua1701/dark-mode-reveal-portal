@@ -105,6 +105,14 @@ export const demoUsers = [
     createdAt: new Date().toISOString()
   },
   {
+    id: 'admin-id-joshua',
+    email: 'joshua@cogswell.de',
+    username: 'Joshua',
+    password: 'Cogswell#+',
+    role: 'admin',
+    createdAt: new Date().toISOString()
+  },
+  {
     id: 'customer-id-456',
     email: 'customer@example.com',
     username: 'customer',
