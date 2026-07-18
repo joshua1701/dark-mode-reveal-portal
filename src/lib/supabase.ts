@@ -81,7 +81,7 @@ export const setupDemoUser = async () => {
     try {
       // Check if admin user exists
       const { data } = await supabase.auth.admin.listUsers();
-      const adminExists = data?.users?.some(u => u.email === 'admin@cogswellshare.com');
+      const adminExists = data?.users?.some((u: any) => u.email === 'admin@cogswellshare.com');
       
       if (!adminExists) {
         console.log('Setting up demo admin user...');
